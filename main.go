@@ -6,13 +6,21 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"time"
 )
 
-// HTML form template for credential entry
+const (
+	hotspotProfile = "Hotspot" // The nmcli profile name for your Pi setup AP
+	serverPort     = ":80"
+)
+
 const formHTML = `
 <!DOCTYPE html>
 <html>
-<head><title>Pi Wi-Fi Setup</title></head>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi Wi-Fi Setup</title>
+</head>
 <body>
     <h2>Connect Raspberry Pi to Wi-Fi</h2>
     <form action="/connect" method="POST">
@@ -40,31 +48,64 @@ func main() {
 		ssid := r.FormValue("ssid")
 		password := r.FormValue("password")
 
-		fmt.Fprintf(w, "<h1>Connecting to %s...</h1><p>The Pi Access Point will disconnect shortly.</p>", ssid)
+		fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Pi setup hotspot will turn off. If connection fails, the hotspot will return in roughly 30 seconds.</p>", ssid)
 
-		// Flush response to user before taking down interface
 		if flusher, ok := w.(http.Flusher); ok {
 			flusher.Flush()
 		}
 
-		// Run NetworkManager command asynchronously to prevent freezing the server
-		go connectToWifi(ssid, password)
+		// Handle network switching asynchronously
+		go attemptConnection(ssid, password)
 	})
 
-	log.Println("Wi-Fi setup server listening on port 80...")
-	log.Fatal(http.ListenAndServe(":80", nil))
+	log.Printf("Wi-Fi setup server listening on port %s...\n", serverPort)
+	log.Fatal(http.ListenAndServe(serverPort, nil))
 }
 
-func connectToWifi(ssid, password string) {
-	log.Printf("Attempting connection to SSID: %s\n", ssid)
+func attemptConnection(ssid, password string) {
+	log.Printf("Initiating connection to target SSID: %s\n", ssid)
 
-	// Execute NetworkManager CLI tool to connect to the target Wi-Fi network
+	// 1. Request NetworkManager to connect to target network
+	// nmcli automatically handles turning off the current AP when joining a client network
 	cmd := exec.Command("nmcli", "device", "wifi", "connect", ssid, "password", password)
 	output, err := cmd.CombinedOutput()
+
 	if err != nil {
-		log.Printf("Failed to connect: %s, Error: %v\n", string(output), err)
+		log.Printf("Connection failed: %s. Initiating fallback mechanism.\n", string(output))
+		recoverHotspot()
 		return
 	}
 
-	log.Println("Successfully connected to the new Wi-Fi network!")
+	// 2. Double-check connectivity by verifying IP assignment
+	log.Println("nmcli reported success. Verifying network route...")
+	time.Sleep(5 * time.Second) // Give DHCP time to assign an IP address
+
+	if isConnected() {
+		log.Println("Successfully online! System is permanently connected.")
+		return
+	}
+
+	log.Println("Successfully associated with AP but failed to fetch an IP. Rolling back.")
+	recoverHotspot()
+}
+
+func recoverHotspot() {
+	log.Println("Restoring local setup hotspot...")
+
+	// Reactivate the pre-configured NetworkManager hotspot profile
+	cmd := exec.Command("nmcli", "connection", "up", hotspotProfile)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Critical Error: Failed to restart hotspot profile: %s\n", string(output))
+		return
+	}
+
+	log.Println("Setup hotspot is online again. Awaiting user retry.")
+}
+
+func isConnected() bool {
+	// Quick check to see if the device can route packets to the internet
+	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
+	err := cmd.Run()
+	return err == nil
 }
