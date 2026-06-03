@@ -1,0 +1,9 @@
+[Unit]
+Description=Runs the sensorhub hotspot on startup
+After=network-online.target
+[Service]
+ExecStart=/usr/local/bin/sensorhub
+Restart=always
+User=chris
+[Install]
+WantedBy=multi-user.target
