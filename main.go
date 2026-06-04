@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	hotspotProfile = "Hotspot" // The nmcli profile name for your Pi setup AP
+	hotspotProfile = "HubHotspot" // The nmcli profile name for your Pi setup AP
 	serverPort     = ":80"
 )
 
@@ -48,7 +48,7 @@ func main() {
 		ssid := r.FormValue("ssid")
 		password := r.FormValue("password")
 
-		fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Pi setup hotspot will turn off. If connection fails, the hotspot will return in roughly 30 seconds.</p>", ssid)
+		fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Pi setup hotspot will reboot. If new wifi connection fails,\n the hotspot will return in roughly 30 seconds.</p>", ssid)
 
 		if flusher, ok := w.(http.Flusher); ok {
 			flusher.Flush()
@@ -85,7 +85,7 @@ func attemptConnection(ssid, password string) {
 		return
 	}
 
-	log.Println("Successfully associated with AP but failed to fetch an IP. Rolling back.")
+	log.Println("Successfully associated with AP but failed to fetch an IP. Returning to hub hotspot.")
 	recoverHotspot()
 }
 
