@@ -22,7 +22,7 @@ const formHTML = `
     <title>Pi Wi-Fi Setup</title>
 </head>
 <body>
-    <h2>Connect Raspberry Pi to Wi-Fi</h2>
+    <h2>Connect Sensor Hub to WiFi</h2>
     <form action="/connect" method="POST">
         <label>SSID (Network Name):</label><br>
         <input type="text" name="ssid" required><br><br>
@@ -48,7 +48,7 @@ func main() {
 		ssid := r.FormValue("ssid")
 		password := r.FormValue("password")
 
-		fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Pi setup hotspot will reboot. If new wifi connection fails,\n the hotspot will return in roughly 30 seconds.</p>", ssid)
+		fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Sensor Hub setup hotspot will reboot. If new wifi connection fails, the hotspot will return in roughly 30 seconds.</p>", ssid)
 
 		if flusher, ok := w.(http.Flusher); ok {
 			flusher.Flush()
@@ -58,7 +58,7 @@ func main() {
 		go attemptConnection(ssid, password)
 	})
 
-	log.Printf("Wi-Fi setup server listening on port %s...\n", serverPort)
+	log.Printf("Sensor Hub Wi-Fi setup server listening on port %s...\n", serverPort)
 	log.Fatal(http.ListenAndServe(serverPort, nil))
 }
 
