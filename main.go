@@ -3,10 +3,15 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"os/exec"
 	"time"
+)
+
+const (
+	Logging  = true            // Always on for logging. Set level with LogLevel property
+	LogLevel = slog.LevelDebug // Change to Error for production
 )
 
 const (
@@ -33,7 +38,12 @@ const formHTML = `
 </body>
 </html>`
 
+var logAll *slog.Logger
+
 func main() {
+	logAll = ConfigureLogging(LogLevel, Logging)
+	logAll.Info("Starting Sensor Hub Wi-Fi setup server...")
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		t, _ := template.New("webpage").Parse(formHTML)
 		t.Execute(w, nil)
@@ -58,12 +68,14 @@ func main() {
 		go attemptConnection(ssid, password)
 	})
 
-	log.Printf("Sensor Hub Wi-Fi setup server listening on port %s...\n", serverPort)
-	log.Fatal(http.ListenAndServe(serverPort, nil))
+	logAll.Info(fmt.Sprintf("Sensor Hub Wi-Fi setup server listening on port %s...", serverPort))
+	if err := http.ListenAndServe(serverPort, nil); err != nil {
+		logAll.Error("Server exited with error", "error", err)
+	}
 }
 
 func attemptConnection(ssid, password string) {
-	log.Printf("Initiating connection to target SSID: %s\n", ssid)
+	logAll.Info(fmt.Sprintf("Initiating connection to target SSID: %s\n", ssid))
 
 	// 1. Request NetworkManager to connect to target network
 	// nmcli automatically handles turning off the current AP when joining a client network
@@ -71,36 +83,36 @@ func attemptConnection(ssid, password string) {
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Printf("Connection failed: %s. Initiating fallback mechanism.\n", string(output))
+		logAll.Error(fmt.Sprintf("Connection failed: %s. Initiating fallback mechanism.\n", string(output)))
 		recoverHotspot()
 		return
 	}
 
 	// 2. Double-check connectivity by verifying IP assignment
-	log.Println("nmcli reported success. Verifying network route...")
+	logAll.Info(fmt.Sprintln("nmcli reported success. Verifying network route..."))
 	time.Sleep(5 * time.Second) // Give DHCP time to assign an IP address
 
 	if isConnected() {
-		log.Println("Successfully online! System is permanently connected.")
+		logAll.Info(fmt.Sprintln("Successfully online! System is permanently connected."))
 		return
 	}
 
-	log.Println("Successfully associated with AP but failed to fetch an IP. Returning to hub hotspot.")
+	logAll.Info(fmt.Sprintln("Successfully associated with AP but failed to fetch an IP. Returning to hub hotspot."))
 	recoverHotspot()
 }
 
 func recoverHotspot() {
-	log.Println("Restoring local setup hotspot...")
+	logAll.Info(fmt.Sprintln("Restoring local setup hotspot..."))
 
 	// Reactivate the pre-configured NetworkManager hotspot profile
 	cmd := exec.Command("nmcli", "connection", "up", hotspotProfile)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("Critical Error: Failed to restart hotspot profile: %s\n", string(output))
+		logAll.Error(fmt.Sprintf("Critical Error: Failed to restart hotspot profile: %s\n", string(output)))
 		return
 	}
 
-	log.Println("Setup hotspot is online again. Awaiting user retry.")
+	logAll.Info(fmt.Sprintln("Setup hotspot is online again. Awaiting user retry."))
 }
 
 func isConnected() bool {
