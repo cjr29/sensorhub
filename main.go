@@ -27,7 +27,7 @@ const formHTML = `
     <title>Pi Wi-Fi Setup</title>
 </head>
 <body>
-    <h2>Connect Sensor Hub to WiFi</h2>
+    <h2>Enter WiFi network to connect Sensor Hub</h2>
     <form action="/connect" method="POST">
         <label>SSID (Network Name):</label><br>
         <input type="text" name="ssid" required><br><br>
