@@ -29,7 +29,7 @@ func ConfigureLogging(logLevel slog.Level, logging bool) *slog.Logger {
 	// Send to stdout, could be a file or other io.Writer
 	log := slog.New(SlogNewHandler(os.Stdout, &slog.HandlerOptions{Level: programLevel, AddSource: false}))
 	if logging {
-		log.Debug("Log handler configured.")
+		log.Debug("Log handler configured for DEBUG.")
 	}
 	return log
 }
