@@ -3,6 +3,8 @@ Description=Runs the sensorhub hotspot on startup
 After=network-online.target
 [Service]
 ExecStart=/usr/local/bin/sensorhub
+StandardOutput=file:/var/log/sensorhub.log
+StandardError=file:/var/log/sensorhub.log
 Restart=always
 [Install]
 WantedBy=multi-user.target
