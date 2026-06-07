@@ -42,7 +42,15 @@ var logAll *slog.Logger
 
 func main() {
 	logAll = ConfigureLogging(LogLevel, Logging)
-	logAll.Info("Starting Sensor Hub Wi-Fi setup server...")
+	logAll.Info("Starting Sensor Hub...")
+
+	logAll.Info("Checking for existing Wi-Fi connection...")
+	if isConnected() {
+		logAll.Info("Already connected to Wi-Fi. No setup needed.")
+		return
+	}
+
+	logAll.Info("No existing connection detected. Starting setup hotspot and server...")
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		t, _ := template.New("webpage").Parse(formHTML)
