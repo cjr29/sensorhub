@@ -47,6 +47,12 @@ func main() {
 	logAll.Info("Checking for existing Wi-Fi connection...")
 	if isConnected() {
 		logAll.Info("Already connected to Wi-Fi. No setup needed.")
+		availableNetworks, err := getAvailableNetworks()
+		if err != nil {
+			logAll.Error("Failed to get available Wi-Fi networks", "error", err)
+		} else {
+			logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
+		}
 		return
 	}
 
