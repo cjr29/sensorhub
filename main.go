@@ -51,6 +51,12 @@ func main() {
 	}
 
 	logAll.Info("No existing connection detected. Starting setup hotspot and server...")
+	availableNetworks, err := getAvailableNetworks()
+	if err != nil {
+		logAll.Error("Failed to get available Wi-Fi networks", "error", err)
+	} else {
+		logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
+	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		t, _ := template.New("webpage").Parse(formHTML)
