@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"log/slog"
-	"net/http"
 	"os/exec"
 	"time"
 )
@@ -44,55 +42,57 @@ func main() {
 	logAll = ConfigureLogging(LogLevel, Logging)
 	logAll.Info("Starting Sensor Hub...")
 
-	logAll.Info("Checking for existing Wi-Fi connection...")
-	if isConnected() {
-		logAll.Info("Already connected to Wi-Fi. No setup needed.")
-		availableNetworksHTML, err := getAvailableNetworksHTML()
-		// availableNetworks, err := getAvailableNetworks()
-		if err != nil {
-			logAll.Error("Failed to get available Wi-Fi networks", "error", err)
-		} else {
-			logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%v\n", availableNetworksHTML))
-		}
-		return
-	}
+	setupViaHotspot()
 
-	logAll.Info("No existing connection detected. Starting setup hotspot and server...")
-	availableNetworks, err := getAvailableNetworks()
-	if err != nil {
-		logAll.Error("Failed to get available Wi-Fi networks", "error", err)
-	} else {
-		logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
-	}
+	// logAll.Info("Checking for existing Wi-Fi connection...")
+	// if isConnected() {
+	// 	logAll.Info("Already connected to Wi-Fi. No setup needed.")
+	// 	availableNetworksHTML, err := getAvailableNetworksHTML()
+	// 	// availableNetworks, err := getAvailableNetworks()
+	// 	if err != nil {
+	// 		logAll.Error("Failed to get available Wi-Fi networks", "error", err)
+	// 	} else {
+	// 		logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%v\n", availableNetworksHTML))
+	// 	}
+	// 	return
+	// }
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		t, _ := template.New("webpage").Parse(formHTML)
-		t.Execute(w, nil)
-	})
+	// logAll.Info("No existing connection detected. Starting setup hotspot and server...")
+	// availableNetworks, err := getAvailableNetworks()
+	// if err != nil {
+	// 	logAll.Error("Failed to get available Wi-Fi networks", "error", err)
+	// } else {
+	// 	logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
+	// }
 
-	http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 	t, _ := template.New("webpage").Parse(formHTML)
+	// 	t.Execute(w, nil)
+	// })
 
-		ssid := r.FormValue("ssid")
-		password := r.FormValue("password")
+	// http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
+	// 	if r.Method != http.MethodPost {
+	// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	// 		return
+	// 	}
 
-		fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Sensor Hub setup hotspot will reboot. If new wifi connection fails, the hotspot will return in roughly 30 seconds.</p>", ssid)
+	// 	ssid := r.FormValue("ssid")
+	// 	password := r.FormValue("password")
 
-		if flusher, ok := w.(http.Flusher); ok {
-			flusher.Flush()
-		}
+	// 	fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Sensor Hub setup hotspot will reboot. If new wifi connection fails, the hotspot will return in roughly 30 seconds.</p>", ssid)
 
-		// Handle network switching asynchronously
-		go attemptConnection(ssid, password)
-	})
+	// 	if flusher, ok := w.(http.Flusher); ok {
+	// 		flusher.Flush()
+	// 	}
 
-	logAll.Info(fmt.Sprintf("Sensor Hub Wi-Fi setup server listening on port %s...", serverPort))
-	if err := http.ListenAndServe(serverPort, nil); err != nil {
-		logAll.Error("Server exited with error", "error", err)
-	}
+	// 	// Handle network switching asynchronously
+	// 	go attemptConnection(ssid, password)
+	// })
+
+	// logAll.Info(fmt.Sprintf("Sensor Hub Wi-Fi setup server listening on port %s...", serverPort))
+	// if err := http.ListenAndServe(serverPort, nil); err != nil {
+	// 	logAll.Error("Server exited with error", "error", err)
+	// }
 }
 
 func attemptConnection(ssid, password string) {
