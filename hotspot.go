@@ -44,7 +44,7 @@ func setupViaHotspot() {
 	if hasInternet() {
 		log.Println("🎉 Connected to internet already. Exiting.")
 		// Display list of available SSIDs for user reference
-		displaySSIDsWithRefresh()
+		menuhtml()
 		return
 	}
 
