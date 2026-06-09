@@ -118,9 +118,9 @@ func connectToWiFi(ssid, password string) error {
 	}
 	logAll.Info(fmt.Sprintf("Attempting to connect to SSID: %s", ssid))
 	if password == "" {
-		cmd = exec.Command("nmcli", "device", "wifi", "connect", ssid)
+		cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid)
 	} else {
-		cmd = exec.Command("nmcli", "device", "wifi", "connect", ssid, "password", password)
+		cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
 	}
 
 	output, err := cmd.CombinedOutput()
