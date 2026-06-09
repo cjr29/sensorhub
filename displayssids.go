@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 const htmlTmpl = `<!doctype html>
@@ -26,10 +25,10 @@ const htmlTmpl = `<!doctype html>
 
 var tmpl = template.Must(template.New("page").Parse(htmlTmpl))
 
-type PageData struct {
-	When  string
-	SSIDs []string
-}
+// type PageData struct {
+// 	When  string
+// 	SSIDs []string
+// }
 
 func scanSSIDs() ([]string, error) {
 	// Use nmcli to list SSIDs (name col, skip header). Adjust if nmcli isn't available.
@@ -57,20 +56,20 @@ func scanSSIDs() ([]string, error) {
 	return ssids, nil
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	ssids, err := scanSSIDs()
-	if err != nil {
-		http.Error(w, "scan error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	data := PageData{
-		When:  time.Now().Format(time.RFC1123),
-		SSIDs: ssids,
-	}
-	if err := tmpl.Execute(w, data); err != nil {
-		log.Println("template error:", err)
-	}
-}
+// func handler(w http.ResponseWriter, r *http.Request) {
+// 	ssids, err := scanSSIDs()
+// 	if err != nil {
+// 		http.Error(w, "scan error: "+err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
+// 	data := PageData{
+// 		When:  time.Now().Format(time.RFC1123),
+// 		SSIDs: ssids,
+// 	}
+// 	if err := tmpl.Execute(w, data); err != nil {
+// 		log.Println("template error:", err)
+// 	}
+// }
 
 // func main() {
 // 	http.HandleFunc("/", handler)
