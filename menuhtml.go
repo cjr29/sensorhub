@@ -48,7 +48,7 @@ type MenuItem struct {
 func menuhtml() {
 	menu := []MenuItem{
 		{"Start new session", "start"},
-		{"View status", "status"},
+		{"List Available Networks", "list"},
 		{"Settings", "settings"},
 		{"Help", "help"},
 	}
@@ -73,8 +73,9 @@ func menuhtml() {
 		switch choice {
 		case "start":
 			fmt.Fprintln(w, "You selected: Start new session")
-		case "status":
-			fmt.Fprintln(w, "You selected: View status")
+		case "list":
+			fmt.Fprintln(w, "You selected: List available networks")
+			displaySSIDsWithRefresh()
 		case "settings":
 			fmt.Fprintln(w, "You selected: Settings")
 		case "help":
