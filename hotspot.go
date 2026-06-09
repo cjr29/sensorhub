@@ -120,7 +120,10 @@ func connectToWiFi(ssid, password string) error {
 	if password == "" {
 		cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid)
 	} else {
-		cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
+		// cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
+		cmd = exec.Command("sudo", "nmcli", "connection", "add", "type", "wifi",
+			"ifname", "wlan0", "con-name", "wifi-home", "ssid", ssid,
+			"wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password)
 	}
 
 	output, err := cmd.CombinedOutput()
