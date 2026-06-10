@@ -33,7 +33,7 @@ func main() {
 	http.HandleFunc("/", indexHandler)
 	// http.HandleFunc("/page1", page1Handler)
 	http.HandleFunc("/page1", listHandler)
-	http.HandleFunc("/page2", page2Handler)
+	http.HandleFunc("/page2", loginHandler)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
@@ -64,7 +64,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 // 	})
 // }
 
-func page2Handler(w http.ResponseWriter, r *http.Request) {
+func loginHandler(w http.ResponseWriter, r *http.Request) {
 	render(w, "page2.html", map[string]any{
 		"Title": "Login to WiFi Network",
 		"Body":  "Enter login information for selected WiFi network.",
