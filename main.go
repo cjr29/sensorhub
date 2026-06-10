@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -20,36 +19,6 @@ const (
 	hotspotProfile = "HubHotspot" // The nmcli profile name for your Pi setup AP
 	serverPort     = ":80"
 )
-
-type PageData struct {
-	Refresh  int
-	Networks []Network
-	Error    string
-}
-
-// type PageData struct {
-// 	When  string
-// 	SSIDs []string
-// }
-
-// const formHTML = `
-// <!DOCTYPE html>
-// <html>
-// <head>
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//     <title>Raspberry Pi Wi-Fi Setup</title>
-// </head>
-// <body>
-//     <h2>Enter WiFi network to connect Sensor Hub</h2>
-//     <form action="/connect" method="POST">
-//         <label>SSID (Network Name):</label><br>
-//         <input type="text" name="ssid" required><br><br>
-//         <label>Password:</label><br>
-//         <input type="password" name="password" required><br><br>
-//         <input type="submit" value="Connect">
-//     </form>
-// </body>
-// </html>`
 
 var logAll *slog.Logger
 
@@ -102,16 +71,7 @@ func page2Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listHandler(w http.ResponseWriter, r *http.Request) {
-	data := PageData{Refresh: refreshSeconds}
-
-	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
-	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
-	out, err := runNmcli("-t", "-f", "SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list")
-	if err != nil {
-		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
-		_ = pageTmpl.Execute(w, data)
-		return
-	}
+	dispSSIDs()
 }
 
 // func main() {

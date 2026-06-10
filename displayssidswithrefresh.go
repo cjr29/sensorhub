@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"html/template"
+	"log"
+	"net/http"
 	"os/exec"
 	"strings"
 	"time"
@@ -23,11 +25,11 @@ var pageTmpl = template.Must(template.New("page").Parse(`<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Available Wi‑Fi Networks</title>
 <style>
-  body { font-family: system-ui, -apple-system, Roboto, "Segoe UI", Arial; padding: 1rem; }
-  table { border-collapse: collapse; width: 100%; max-width: 900px; }
-  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e1e1e1; }
-  th { background: #f7f7f7; }
-  .muted { color: #666; font-size: .9rem; }
+body { font-family: system-ui, -apple-system, Roboto, "Segoe UI", Arial; padding: 1rem; }
+table { border-collapse: collapse; width: 100%; max-width: 900px; }
+th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e1e1e1; }
+th { background: #f7f7f7; }
+.muted { color: #666; font-size: .9rem; }
 </style>
 <meta http-equiv="refresh" content="{{.Refresh}}">
 </head>
@@ -35,26 +37,26 @@ var pageTmpl = template.Must(template.New("page").Parse(`<!doctype html>
 <h1>Available Wi‑Fi Networks</h1>
 <p class="muted">Auto-refresh every {{.Refresh}} seconds</p>
 {{if .Error}}
-  <p style="color:red">Error: {{.Error}}</p>
+<p style="color:red">Error: {{.Error}}</p>
 {{end}}
 {{if .Networks}}
 <table>
-  <thead><tr><th>SSID</th><th>BSSID</th><th>CHAN</th><th>RATE</th><th>SIGNAL</th><th>SECURITY</th></tr></thead>
-  <tbody>
-  {{range .Networks}}
-    <tr>
-      <td>{{.SSID}}</td>
-      <td>{{.BSSID}}</td>
-      <td>{{.CHAN}}</td>
-      <td>{{.RATE}}</td>
-      <td>{{.SIGNAL}}</td>
-      <td>{{.SECURITY}}</td>
-    </tr>
-  {{end}}
-  </tbody>
+<thead><tr><th>SSID</th><th>BSSID</th><th>CHAN</th><th>RATE</th><th>SIGNAL</th><th>SECURITY</th></tr></thead>
+<tbody>
+{{range .Networks}}
+<tr>
+<td>{{.SSID}}</td>
+<td>{{.BSSID}}</td>
+<td>{{.CHAN}}</td>
+<td>{{.RATE}}</td>
+<td>{{.SIGNAL}}</td>
+<td>{{.SECURITY}}</td>
+</tr>
+{{end}}
+</tbody>
 </table>
 {{else}}
-  <p>No networks found.</p>
+<p>No networks found.</p>
 {{end}}
 </body>
 </html>`))
@@ -68,11 +70,11 @@ type Network struct {
 	SECURITY string
 }
 
-// type PageData struct {
-// 	Refresh  int
-// 	Networks []Network
-// 	Error    string
-// }
+type SSIDPageData struct {
+	Refresh  int
+	Networks []Network
+	Error    string
+}
 
 // runNmcli runs nmcli command with timeout and returns stdout or an error.
 func runNmcli(args ...string) (string, error) {
@@ -130,36 +132,28 @@ func parseNmcliScan(raw string) []Network {
 	return nets
 }
 
-// func handler(w http.ResponseWriter, r *http.Request) {
-// 	data := PageData{Refresh: refreshSeconds}
+func handler(w http.ResponseWriter, r *http.Request) {
+	data := SSIDPageData{Refresh: refreshSeconds}
 
-// 	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
-// 	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
-// 	out, err := runNmcli("-t", "-f", "SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list")
-// 	if err != nil {
-// 		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
-// 		_ = pageTmpl.Execute(w, data)
-// 		return
-// 	}
+	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
+	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
+	out, err := runNmcli("-t", "-f", "SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list")
+	if err != nil {
+		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
+		_ = pageTmpl.Execute(w, data)
+		return
+	}
 
-// 	data.Networks = parseNmcliScan(out)
-// 	if err := pageTmpl.Execute(w, data); err != nil {
-// 		http.Error(w, "template render error", http.StatusInternalServerError)
-// 	}
-// }
+	data.Networks = parseNmcliScan(out)
+	if err := pageTmpl.Execute(w, data); err != nil {
+		http.Error(w, "template render error", http.StatusInternalServerError)
+	}
+}
 
-// func main() {
-// 	http.HandleFunc("/", handler)
-// 	log.Printf("listening on %s (refresh %d s)\n", listenAddr, refreshSeconds)
-// 	if err := http.ListenAndServe(listenAddr, nil); err != nil {
-// 		log.Fatal(err)
-// 	}
-// }
-
-// func displaySSIDsWithRefresh() {
-// 	http.HandleFunc("/", handler)
-// 	log.Printf("listening on %s (refresh every %d seconds)\n", listenAddr, refreshSeconds)
-// 	if err := http.ListenAndServe(listenAddr, nil); err != nil {
-// 		log.Fatal(err)
-// 	}
-// }
+func dispSSIDs() {
+	http.HandleFunc("/", handler)
+	log.Printf("listening on %s (refresh %d s)\n", listenAddr, refreshSeconds)
+	if err := http.ListenAndServe(listenAddr, nil); err != nil {
+		log.Fatal(err)
+	}
+}
