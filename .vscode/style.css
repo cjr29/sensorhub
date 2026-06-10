@@ -1,0 +1,4 @@
+body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+nav ul { list-style: none; padding: 0; }
+nav li { margin: 0.5rem 0; }
+a { color: #0073e6; text-decoration: none; }

@@ -42,7 +42,9 @@ const formHTML = `
 
 var logAll *slog.Logger
 
-var tpl = template.Must(template.New("").ParseGlob("templates/*.html"))
+var tpl = template.Must(template.New("").Funcs(template.FuncMap{
+	"inc": func(i int) int { return i + 1 },
+}).ParseGlob("templates/*.html"))
 
 type PageData struct {
 	Title       string
