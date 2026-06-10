@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -21,9 +22,15 @@ const (
 )
 
 type PageData struct {
-	When  string
-	SSIDs []string
+	Refresh  int
+	Networks []Network
+	Error    string
 }
+
+// type PageData struct {
+// 	When  string
+// 	SSIDs []string
+// }
 
 // const formHTML = `
 // <!DOCTYPE html>
@@ -54,7 +61,8 @@ func main() {
 	logAll.Info("Starting Sensor Hub...")
 
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/page1", page1Handler)
+	// http.HandleFunc("/page1", page1Handler)
+	http.HandleFunc("/page1", listHandler)
 	http.HandleFunc("/page2", page2Handler)
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
@@ -82,7 +90,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 func page1Handler(w http.ResponseWriter, r *http.Request) {
 	render(w, "page1.html", map[string]any{
 		"Title": "List of Available Networks",
-		"Body":  "Display available WiFi networks, refreshed every 5 seconds.",
+		"Body":  "Displays available WiFi networks, refreshed every 5 seconds.",
 	})
 }
 
@@ -94,17 +102,15 @@ func page2Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listHandler(w http.ResponseWriter, r *http.Request) {
-	ssids, err := scanSSIDs()
+	data := PageData{Refresh: refreshSeconds}
+
+	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
+	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
+	out, err := runNmcli("-t", "-f", "SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list")
 	if err != nil {
-		http.Error(w, "scan error: "+err.Error(), http.StatusInternalServerError)
+		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
+		_ = pageTmpl.Execute(w, data)
 		return
-	}
-	data := PageData{
-		When:  time.Now().Format(time.RFC1123),
-		SSIDs: ssids,
-	}
-	if err := tmpl.Execute(w, data); err != nil {
-		log.Println("template error:", err)
 	}
 }
 
