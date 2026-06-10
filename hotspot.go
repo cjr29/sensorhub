@@ -20,7 +20,7 @@ const inputformHTML = `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Raspberry Pi Wi-Fi Setup</title>
+    <title>Sensor Hub Wi-Fi Setup</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: Arial, sans-serif; margin: 40px auto; max-width: 400px; padding: 20px; }
@@ -29,7 +29,7 @@ const inputformHTML = `
     </style>
 </head>
 <body>
-    <h2>Connect Pi to Wi-Fi</h2>
+    <h1>Connect Sensor Hub to WiFi</h1>
     <form action="/connect" method="POST">
         <label>Wi-Fi Name (SSID):</label>
         <input type="text" name="ssid" required>
