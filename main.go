@@ -20,6 +20,11 @@ const (
 	serverPort     = ":80"
 )
 
+type PageData struct {
+	When  string
+	SSIDs []string
+}
+
 // const formHTML = `
 // <!DOCTYPE html>
 // <html>
@@ -41,74 +46,12 @@ const (
 
 var logAll *slog.Logger
 
-// var tpl = template.Must(template.New("").Funcs(template.FuncMap{
-// 	"inc": func(i int) int { return i + 1 },
-// }).ParseGlob("templates/*.html"))
-
 var tmpl = template.Must(template.New("").ParseGlob("templates/*.html"))
 
-// type PageData struct {
-// 	Title       string
-// 	Now         string
-// 	ItemID      int
-// 	Description string
-// }
-
-// func mainHandler(w http.ResponseWriter, r *http.Request) {
-// 	data := PageData{
-// 		Title: "Main Page",
-// 		Now:   time.Now().Format(time.RFC1123),
-// 	}
-// 	if err := tpl.ExecuteTemplate(w, "main.html", data); err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 	}
-// }
-
-// dynamic handler: /item/{id}?desc=...
-// func itemHandler(w http.ResponseWriter, r *http.Request) {
-// 	// Expect path like /item/123
-// 	// Extract id:
-// 	idStr := ""
-// 	// r.URL.Path is "/item/123"
-// 	const prefix = "/item/"
-// 	if len(r.URL.Path) > len(prefix) {
-// 		idStr = r.URL.Path[len(prefix):]
-// 	}
-// 	id := 0
-// 	if idStr != "" {
-// 		if v, err := strconv.Atoi(idStr); err == nil {
-// 			id = v
-// 		}
-// 	}
-// 	desc := r.URL.Query().Get("desc")
-// 	if desc == "" {
-// 		desc = "No description provided."
-// 	}
-// 	data := PageData{
-// 		Title:       "Item Page",
-// 		Now:         time.Now().Format(time.RFC1123),
-// 		ItemID:      id,
-// 		Description: desc,
-// 	}
-// 	if err := tpl.ExecuteTemplate(w, "item.html", data); err != nil {
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 	}
-// }
-
-// simple assets handler for CSS
-// func assetsHandler(w http.ResponseWriter, r *http.Request) {
-// 	http.ServeFile(w, r, "."+r.URL.Path)
-// }
-
 func main() {
-	// http.HandleFunc("/", mainHandler)
-	// http.HandleFunc("/item/", itemHandler)
-	// http.HandleFunc("/assets/", assetsHandler)
 
-	// log.Println("Listening on :8080")
-	// if err := http.ListenAndServe(":8080", nil); err != nil {
-	// 	log.Fatal(err)
-	// }
+	logAll = ConfigureLogging(LogLevel, Logging)
+	logAll.Info("Starting Sensor Hub...")
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/page1", page1Handler)
@@ -120,12 +63,6 @@ func main() {
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
 	}
-
-	// addr := "127.0.0.1:8080"
-	// log.Printf("Starting server at http://%s\n", addr)
-	// if err := http.ListenAndServe(addr, nil); err != nil {
-	// 	log.Fatalf("server failed: %v", err)
-	// }
 }
 
 func render(w http.ResponseWriter, name string, data any) {
@@ -145,15 +82,30 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 func page1Handler(w http.ResponseWriter, r *http.Request) {
 	render(w, "page1.html", map[string]any{
 		"Title": "List of Available Networks",
-		"Body":  "This is the first secondary page.",
+		"Body":  "Display available WiFi networks, refreshed every 5 seconds.",
 	})
 }
 
 func page2Handler(w http.ResponseWriter, r *http.Request) {
 	render(w, "page2.html", map[string]any{
 		"Title": "Login to WiFi Network",
-		"Body":  "This is the second secondary page.",
+		"Body":  "Enter login information for selected WiFi network.",
 	})
+}
+
+func listHandler(w http.ResponseWriter, r *http.Request) {
+	ssids, err := scanSSIDs()
+	if err != nil {
+		http.Error(w, "scan error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data := PageData{
+		When:  time.Now().Format(time.RFC1123),
+		SSIDs: ssids,
+	}
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Println("template error:", err)
+	}
 }
 
 // func main() {
