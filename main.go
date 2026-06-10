@@ -137,20 +137,20 @@ func render(w http.ResponseWriter, name string, data any) {
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	render(w, "index.html", map[string]any{
-		"Title": "Main Menu",
+		"Title": "Sensor Hub Setup",
 	})
 }
 
 func page1Handler(w http.ResponseWriter, r *http.Request) {
 	render(w, "page1.html", map[string]any{
-		"Title": "Page 1",
+		"Title": "List of Available Networks",
 		"Body":  "This is the first secondary page.",
 	})
 }
 
 func page2Handler(w http.ResponseWriter, r *http.Request) {
 	render(w, "page2.html", map[string]any{
-		"Title": "Page 2",
+		"Title": "Login to WiFi Network",
 		"Body":  "This is the second secondary page.",
 	})
 }
