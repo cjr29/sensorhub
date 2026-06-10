@@ -26,7 +26,7 @@ const formHTML = `
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi Wi-Fi Setup</title>
+    <title>Raspberry Pi Wi-Fi Setup</title>
 </head>
 <body>
     <h2>Enter WiFi network to connect Sensor Hub</h2>
