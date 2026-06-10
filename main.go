@@ -113,8 +113,8 @@ func main() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/page1", page1Handler)
 	http.HandleFunc("/page2", page2Handler)
-	fs := http.FileServer(http.Dir("/assets/"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	log.Println("Listening on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
