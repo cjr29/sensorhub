@@ -20,24 +20,24 @@ const (
 	serverPort     = ":80"
 )
 
-const formHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raspberry Pi Wi-Fi Setup</title>
-</head>
-<body>
-    <h2>Enter WiFi network to connect Sensor Hub</h2>
-    <form action="/connect" method="POST">
-        <label>SSID (Network Name):</label><br>
-        <input type="text" name="ssid" required><br><br>
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br><br>
-        <input type="submit" value="Connect">
-    </form>
-</body>
-</html>`
+// const formHTML = `
+// <!DOCTYPE html>
+// <html>
+// <head>
+//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//     <title>Raspberry Pi Wi-Fi Setup</title>
+// </head>
+// <body>
+//     <h2>Enter WiFi network to connect Sensor Hub</h2>
+//     <form action="/connect" method="POST">
+//         <label>SSID (Network Name):</label><br>
+//         <input type="text" name="ssid" required><br><br>
+//         <label>Password:</label><br>
+//         <input type="password" name="password" required><br><br>
+//         <input type="submit" value="Connect">
+//     </form>
+// </body>
+// </html>`
 
 var logAll *slog.Logger
 
@@ -96,9 +96,9 @@ var tmpl = template.Must(template.New("").ParseGlob("templates/*.html"))
 // }
 
 // simple assets handler for CSS
-func assetsHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "."+r.URL.Path)
-}
+// func assetsHandler(w http.ResponseWriter, r *http.Request) {
+// 	http.ServeFile(w, r, "."+r.URL.Path)
+// }
 
 func main() {
 	// http.HandleFunc("/", mainHandler)
