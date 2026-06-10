@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"html/template"
-	"log"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -150,10 +149,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func dispSSIDs() {
-	http.HandleFunc("/", handler)
-	log.Printf("listening on %s (refresh %d s)\n", listenAddr, refreshSeconds)
-	if err := http.ListenAndServe(listenAddr, nil); err != nil {
-		log.Fatal(err)
-	}
-}
+// NOT USED IN MAIN FLOW, but can be used for quick testing of the page template and nmcli parsing logic
+// func main() {
+// 	http.HandleFunc("/", handler)
+// 	log.Printf("listening on %s (refresh %d s)\n", listenAddr, refreshSeconds)
+// 	if err := http.ListenAndServe(listenAddr, nil); err != nil {
+// 		log.Fatal(err)
+// 	}
+// }

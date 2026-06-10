@@ -57,12 +57,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func page1Handler(w http.ResponseWriter, r *http.Request) {
-	render(w, "page1.html", map[string]any{
-		"Title": "List of Available Networks",
-		"Body":  "Displays available WiFi networks, refreshed every 5 seconds.",
-	})
-}
+// func page1Handler(w http.ResponseWriter, r *http.Request) {
+// 	render(w, "page1.html", map[string]any{
+// 		"Title": "List of Available Networks",
+// 		"Body":  "Displays available WiFi networks, refreshed every 5 seconds.",
+// 	})
+// }
 
 func page2Handler(w http.ResponseWriter, r *http.Request) {
 	render(w, "page2.html", map[string]any{
