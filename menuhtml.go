@@ -2,43 +2,42 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 )
 
-var tpl = template.Must(template.New("menu").Parse(`
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Menu</title>
-  <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 2rem; }
-    .menu { max-width: 420px; margin: 0 auto; }
-    .choice { margin: .5rem 0; }
-    button { padding: .5rem 1rem; }
-  </style>
-</head>
-<body>
-  <div class="menu">
-    <h1>Choose an option</h1>
-    <form method="POST" action="/choose">
-      {{range .}}
-        <div class="choice">
-          <label>
-            <input type="radio" name="choice" value="{{.Value}}" required>
-            {{.Label}}
-          </label>
-        </div>
-      {{end}}
-      <button type="submit">Submit</button>
-    </form>
-  </div>
-</body>
-</html>
-`))
+// var tpl = template.Must(template.New("menu").Parse(`
+// <!doctype html>
+// <html lang="en">
+// <head>
+//   <meta charset="utf-8"/>
+//   <meta name="viewport" content="width=device-width,initial-scale=1"/>
+//   <title>Menu</title>
+//   <style>
+//     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 2rem; }
+//     .menu { max-width: 420px; margin: 0 auto; }
+//     .choice { margin: .5rem 0; }
+//     button { padding: .5rem 1rem; }
+//   </style>
+// </head>
+// <body>
+//   <div class="menu">
+//     <h1>Choose an option</h1>
+//     <form method="POST" action="/choose">
+//       {{range .}}
+//         <div class="choice">
+//           <label>
+//             <input type="radio" name="choice" value="{{.Value}}" required>
+//             {{.Label}}
+//           </label>
+//         </div>
+//       {{end}}
+//       <button type="submit">Submit</button>
+//     </form>
+//   </div>
+// </body>
+// </html>
+// `))
 
 type MenuItem struct {
 	Label string
@@ -75,7 +74,7 @@ func menuhtml() {
 			fmt.Fprintln(w, "You selected: Start new session")
 		case "list":
 			fmt.Fprintln(w, "You selected: List available networks")
-			displaySSIDsWithRefresh()
+			// displaySSIDsWithRefresh()
 		case "settings":
 			fmt.Fprintln(w, "You selected: Settings")
 		case "help":

@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"html/template"
+	"log"
 	"log/slog"
+	"net/http"
 	"os/exec"
+	"strconv"
 	"time"
 )
 
@@ -38,62 +42,128 @@ const formHTML = `
 
 var logAll *slog.Logger
 
-func main() {
-	logAll = ConfigureLogging(LogLevel, Logging)
-	logAll.Info("Starting Sensor Hub...")
+var tpl = template.Must(template.New("").ParseGlob("templates/*.html"))
 
-	setupViaHotspot()
-
-	// logAll.Info("Checking for existing Wi-Fi connection...")
-	// if isConnected() {
-	// 	logAll.Info("Already connected to Wi-Fi. No setup needed.")
-	// 	availableNetworksHTML, err := getAvailableNetworksHTML()
-	// 	// availableNetworks, err := getAvailableNetworks()
-	// 	if err != nil {
-	// 		logAll.Error("Failed to get available Wi-Fi networks", "error", err)
-	// 	} else {
-	// 		logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%v\n", availableNetworksHTML))
-	// 	}
-	// 	return
-	// }
-
-	// logAll.Info("No existing connection detected. Starting setup hotspot and server...")
-	// availableNetworks, err := getAvailableNetworks()
-	// if err != nil {
-	// 	logAll.Error("Failed to get available Wi-Fi networks", "error", err)
-	// } else {
-	// 	logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
-	// }
-
-	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	// 	t, _ := template.New("webpage").Parse(formHTML)
-	// 	t.Execute(w, nil)
-	// })
-
-	// http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
-	// 	if r.Method != http.MethodPost {
-	// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	// 		return
-	// 	}
-
-	// 	ssid := r.FormValue("ssid")
-	// 	password := r.FormValue("password")
-
-	// 	fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Sensor Hub setup hotspot will reboot. If new wifi connection fails, the hotspot will return in roughly 30 seconds.</p>", ssid)
-
-	// 	if flusher, ok := w.(http.Flusher); ok {
-	// 		flusher.Flush()
-	// 	}
-
-	// 	// Handle network switching asynchronously
-	// 	go attemptConnection(ssid, password)
-	// })
-
-	// logAll.Info(fmt.Sprintf("Sensor Hub Wi-Fi setup server listening on port %s...", serverPort))
-	// if err := http.ListenAndServe(serverPort, nil); err != nil {
-	// 	logAll.Error("Server exited with error", "error", err)
-	// }
+type PageData struct {
+	Title       string
+	Now         string
+	ItemID      int
+	Description string
 }
+
+func mainHandler(w http.ResponseWriter, r *http.Request) {
+	data := PageData{
+		Title: "Main Page",
+		Now:   time.Now().Format(time.RFC1123),
+	}
+	if err := tpl.ExecuteTemplate(w, "main.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// dynamic handler: /item/{id}?desc=...
+func itemHandler(w http.ResponseWriter, r *http.Request) {
+	// Expect path like /item/123
+	// Extract id:
+	idStr := ""
+	// r.URL.Path is "/item/123"
+	const prefix = "/item/"
+	if len(r.URL.Path) > len(prefix) {
+		idStr = r.URL.Path[len(prefix):]
+	}
+	id := 0
+	if idStr != "" {
+		if v, err := strconv.Atoi(idStr); err == nil {
+			id = v
+		}
+	}
+	desc := r.URL.Query().Get("desc")
+	if desc == "" {
+		desc = "No description provided."
+	}
+	data := PageData{
+		Title:       "Item Page",
+		Now:         time.Now().Format(time.RFC1123),
+		ItemID:      id,
+		Description: desc,
+	}
+	if err := tpl.ExecuteTemplate(w, "item.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// simple assets handler for CSS
+func assetsHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "."+r.URL.Path)
+}
+
+func main() {
+	http.HandleFunc("/", mainHandler)
+	http.HandleFunc("/item/", itemHandler)
+	http.HandleFunc("/assets/", assetsHandler)
+
+	log.Println("Listening on :8080")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// func main() {
+// 	logAll = ConfigureLogging(LogLevel, Logging)
+// 	logAll.Info("Starting Sensor Hub...")
+
+// 	setupViaHotspot()
+
+// 	// logAll.Info("Checking for existing Wi-Fi connection...")
+// 	// if isConnected() {
+// 	// 	logAll.Info("Already connected to Wi-Fi. No setup needed.")
+// 	// 	availableNetworksHTML, err := getAvailableNetworksHTML()
+// 	// 	// availableNetworks, err := getAvailableNetworks()
+// 	// 	if err != nil {
+// 	// 		logAll.Error("Failed to get available Wi-Fi networks", "error", err)
+// 	// 	} else {
+// 	// 		logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%v\n", availableNetworksHTML))
+// 	// 	}
+// 	// 	return
+// 	// }
+
+// 	// logAll.Info("No existing connection detected. Starting setup hotspot and server...")
+// 	// availableNetworks, err := getAvailableNetworks()
+// 	// if err != nil {
+// 	// 	logAll.Error("Failed to get available Wi-Fi networks", "error", err)
+// 	// } else {
+// 	// 	logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
+// 	// }
+
+// 	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+// 	// 	t, _ := template.New("webpage").Parse(formHTML)
+// 	// 	t.Execute(w, nil)
+// 	// })
+
+// 	// http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
+// 	// 	if r.Method != http.MethodPost {
+// 	// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// 	// 		return
+// 	// 	}
+
+// 	// 	ssid := r.FormValue("ssid")
+// 	// 	password := r.FormValue("password")
+
+// 	// 	fmt.Fprintf(w, "<h1>Trying to connect to %s...</h1><p>The Sensor Hub setup hotspot will reboot. If new wifi connection fails, the hotspot will return in roughly 30 seconds.</p>", ssid)
+
+// 	// 	if flusher, ok := w.(http.Flusher); ok {
+// 	// 		flusher.Flush()
+// 	// 	}
+
+// 	// 	// Handle network switching asynchronously
+// 	// 	go attemptConnection(ssid, password)
+// 	// })
+
+// 	// logAll.Info(fmt.Sprintf("Sensor Hub Wi-Fi setup server listening on port %s...", serverPort))
+// 	// if err := http.ListenAndServe(serverPort, nil); err != nil {
+// 	// 	logAll.Error("Server exited with error", "error", err)
+// 	// }
+// }
 
 func attemptConnection(ssid, password string) {
 	logAll.Info(fmt.Sprintf("Initiating connection to target SSID: %s\n", ssid))

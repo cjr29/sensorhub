@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"html/template"
-	"log"
-	"net/http"
 	"os/exec"
 	"strings"
 )
@@ -80,11 +78,11 @@ func scanSSIDs() ([]string, error) {
 // 	}
 // }
 
-func displaySSIDs() {
-	http.HandleFunc("/", handler)
-	addr := ":8080"
-	log.Println("listening on", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		log.Fatal(err)
-	}
-}
+// func displaySSIDs() {
+// 	http.HandleFunc("/", handler)
+// 	addr := ":8080"
+// 	log.Println("listening on", addr)
+// 	if err := http.ListenAndServe(addr, nil); err != nil {
+// 		log.Fatal(err)
+// 	}
+// }
