@@ -53,7 +53,7 @@ func menuhtml() {
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if err := tpl.Execute(w, menu); err != nil {
+		if err := tmpl.Execute(w, menu); err != nil {
 			http.Error(w, "template error", http.StatusInternalServerError)
 			log.Println("template execute:", err)
 		}

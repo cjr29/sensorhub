@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os/exec"
-	"strconv"
 	"time"
 )
 
@@ -42,57 +41,59 @@ const formHTML = `
 
 var logAll *slog.Logger
 
-var tpl = template.Must(template.New("").Funcs(template.FuncMap{
-	"inc": func(i int) int { return i + 1 },
-}).ParseGlob("templates/*.html"))
+// var tpl = template.Must(template.New("").Funcs(template.FuncMap{
+// 	"inc": func(i int) int { return i + 1 },
+// }).ParseGlob("templates/*.html"))
 
-type PageData struct {
-	Title       string
-	Now         string
-	ItemID      int
-	Description string
-}
+var tmpl = template.Must(template.New("").ParseGlob("templates/*.html"))
 
-func mainHandler(w http.ResponseWriter, r *http.Request) {
-	data := PageData{
-		Title: "Main Page",
-		Now:   time.Now().Format(time.RFC1123),
-	}
-	if err := tpl.ExecuteTemplate(w, "main.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
+// type PageData struct {
+// 	Title       string
+// 	Now         string
+// 	ItemID      int
+// 	Description string
+// }
+
+// func mainHandler(w http.ResponseWriter, r *http.Request) {
+// 	data := PageData{
+// 		Title: "Main Page",
+// 		Now:   time.Now().Format(time.RFC1123),
+// 	}
+// 	if err := tpl.ExecuteTemplate(w, "main.html", data); err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 	}
+// }
 
 // dynamic handler: /item/{id}?desc=...
-func itemHandler(w http.ResponseWriter, r *http.Request) {
-	// Expect path like /item/123
-	// Extract id:
-	idStr := ""
-	// r.URL.Path is "/item/123"
-	const prefix = "/item/"
-	if len(r.URL.Path) > len(prefix) {
-		idStr = r.URL.Path[len(prefix):]
-	}
-	id := 0
-	if idStr != "" {
-		if v, err := strconv.Atoi(idStr); err == nil {
-			id = v
-		}
-	}
-	desc := r.URL.Query().Get("desc")
-	if desc == "" {
-		desc = "No description provided."
-	}
-	data := PageData{
-		Title:       "Item Page",
-		Now:         time.Now().Format(time.RFC1123),
-		ItemID:      id,
-		Description: desc,
-	}
-	if err := tpl.ExecuteTemplate(w, "item.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
+// func itemHandler(w http.ResponseWriter, r *http.Request) {
+// 	// Expect path like /item/123
+// 	// Extract id:
+// 	idStr := ""
+// 	// r.URL.Path is "/item/123"
+// 	const prefix = "/item/"
+// 	if len(r.URL.Path) > len(prefix) {
+// 		idStr = r.URL.Path[len(prefix):]
+// 	}
+// 	id := 0
+// 	if idStr != "" {
+// 		if v, err := strconv.Atoi(idStr); err == nil {
+// 			id = v
+// 		}
+// 	}
+// 	desc := r.URL.Query().Get("desc")
+// 	if desc == "" {
+// 		desc = "No description provided."
+// 	}
+// 	data := PageData{
+// 		Title:       "Item Page",
+// 		Now:         time.Now().Format(time.RFC1123),
+// 		ItemID:      id,
+// 		Description: desc,
+// 	}
+// 	if err := tpl.ExecuteTemplate(w, "item.html", data); err != nil {
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 	}
+// }
 
 // simple assets handler for CSS
 func assetsHandler(w http.ResponseWriter, r *http.Request) {
@@ -100,14 +101,58 @@ func assetsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", mainHandler)
-	http.HandleFunc("/item/", itemHandler)
-	http.HandleFunc("/assets/", assetsHandler)
+	// http.HandleFunc("/", mainHandler)
+	// http.HandleFunc("/item/", itemHandler)
+	// http.HandleFunc("/assets/", assetsHandler)
+
+	// log.Println("Listening on :8080")
+	// if err := http.ListenAndServe(":8080", nil); err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/page1", page1Handler)
+	http.HandleFunc("/page2", page2Handler)
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	log.Println("Listening on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
 	}
+
+	// addr := "127.0.0.1:8080"
+	// log.Printf("Starting server at http://%s\n", addr)
+	// if err := http.ListenAndServe(addr, nil); err != nil {
+	// 	log.Fatalf("server failed: %v", err)
+	// }
+}
+
+func render(w http.ResponseWriter, name string, data any) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
+		http.Error(w, "template error", http.StatusInternalServerError)
+		log.Println("template execute error:", err)
+	}
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	render(w, "index.html", map[string]any{
+		"Title": "Main Menu",
+	})
+}
+
+func page1Handler(w http.ResponseWriter, r *http.Request) {
+	render(w, "page1.html", map[string]any{
+		"Title": "Page 1",
+		"Body":  "This is the first secondary page.",
+	})
+}
+
+func page2Handler(w http.ResponseWriter, r *http.Request) {
+	render(w, "page2.html", map[string]any{
+		"Title": "Page 2",
+		"Body":  "This is the second secondary page.",
+	})
 }
 
 // func main() {

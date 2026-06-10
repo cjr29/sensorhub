@@ -21,7 +21,7 @@ const htmlTmpl = `<!doctype html>
 </body>
 </html>`
 
-var tmpl = template.Must(template.New("page").Parse(htmlTmpl))
+var tmpl1 = template.Must(template.New("page").Parse(htmlTmpl))
 
 // type PageData struct {
 // 	When  string
