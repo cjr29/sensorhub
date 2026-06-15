@@ -3,11 +3,9 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"log/slog"
-	"net/http"
+	"os"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -17,8 +15,9 @@ const (
 )
 
 const (
-	hotspotProfile = "HubHotspot" // The nmcli profile name for your Pi setup AP
-	serverPort     = ":80"
+	hotspotProfile  = "HubHotspot" // The nmcli profile name for your Pi setup AP
+	serverPort      = ":80"
+	pathToHubConfig = "/var/sensorhub/sensorhub.config"
 )
 
 var logAll *slog.Logger
@@ -30,62 +29,20 @@ func main() {
 	logAll = ConfigureLogging(LogLevel, Logging)
 	logAll.Info("Starting Sensor Hub...")
 
-	http.HandleFunc("/", indexHandler)
-	// http.HandleFunc("/page1", page1Handler)
-	http.HandleFunc("/page1", listHandler)
-	http.HandleFunc("/page2", loginHandler)
+	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
+	if configured() {
+		logAll.Info("Already configured to connect to Wi-Fi. Now test connection.")
+		if isConnected() {
+			logAll.Info("Already connected to Wi-Fi. No setup needed.")
+		} else {
+			logAll.Info("Configured Wi-Fi network not currently reachable. Starting setup hotspot and server...")
+			configureViaHotspot()
+		}
 
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
-
-	log.Println("Listening on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func render(w http.ResponseWriter, name string, data any) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
-		log.Println("template execute error:", err)
-	}
-}
-
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	render(w, "index.html", map[string]any{
-		"Title": "Sensor Hub Setup",
-	})
-}
-
-// func page1Handler(w http.ResponseWriter, r *http.Request) {
-// 	render(w, "page1.html", map[string]any{
-// 		"Title": "List of Available Networks",
-// 		"Body":  "Displays available WiFi networks, refreshed every 5 seconds.",
-// 	})
-// }
-
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	render(w, "page2.html", map[string]any{
-		"Title": "Login to WiFi Network",
-		"Body":  "Enter login information for selected WiFi network.",
-	})
-}
-
-func listHandler(w http.ResponseWriter, r *http.Request) {
-	data := SSIDPageData{Refresh: refreshSeconds}
-
-	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
-	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
-	out, err := runNmcli("-t", "-f", "SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list")
-	if err != nil {
-		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
-		_ = pageTmpl.Execute(w, data)
-		return
-	}
-
-	data.Networks = parseNmcliScan(out)
-	if err := pageTmpl.Execute(w, data); err != nil {
-		http.Error(w, "template render error", http.StatusInternalServerError)
+		logAll.Info("No existing connection detected. Starting setup hotspot and server...")
+	} else {
+		logAll.Info("WiFi has not been configured. Starting hotspot configuration.")
+		configureViaHotspot()
 	}
 }
 
@@ -192,4 +149,35 @@ func isConnected() bool {
 	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
 	err := cmd.Run()
 	return err == nil
+}
+
+func configured() bool {
+	// Check if the device is already configured to connect to a Wi-Fi network
+	// We use a text file to hold the SSID of the currently configured network. If it exists, we assume we're configured.
+	// Filename is /var/sensorhub/sensorhub.config and contains the SSID of the currently configured network.
+	// If the file doesn't exist, we assume we're not configured.
+	_, err := os.Stat(pathToHubConfig)
+	if err == nil {
+		return true // file exists
+	}
+	// if os.IsNotExist(err) {
+	// 	f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
+	// 	if err != nil {
+	// 		// file might have been created concurrently or another error occurred
+	// 		if os.IsExist(err) {
+	// 			return true
+	// 		}
+	// 		return false
+	// 	}
+	// 	_ = f.Close()
+	// 	return false // file created
+	// }
+	return false // No config file, return false
+}
+
+func initConfig(ssid string, path string) error {
+	// Write the SSID to the config file for persistence
+	// Overwrites any existing content, which is fine since we only need to store the current SSID
+	// Creates the file if it doesn't exist, or truncates it if it does. Permissions are set to 0644 (read/write for owner, read for group and others).
+	return os.WriteFile(path, []byte(ssid), 0644)
 }
