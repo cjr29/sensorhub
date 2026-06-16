@@ -41,7 +41,11 @@ func newFileHandler(path string) (*fileHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := slog.NewJSONHandler(f, &slog.HandlerOptions{})
+	h := slog.NewTextHandler(f, &slog.HandlerOptions{
+		Level:       LogLevel,
+		AddSource:   false,
+		ReplaceAttr: nil,
+	})
 	return &fileHandler{file: f, h: h}, nil
 }
 
@@ -78,7 +82,12 @@ func (fh *fileHandler) Reopen(path string) error {
 	if err != nil {
 		return err
 	}
-	newh := slog.NewJSONHandler(newf, &slog.HandlerOptions{})
+
+	newh := slog.NewTextHandler(newf, &slog.HandlerOptions{
+		Level:       LogLevel,
+		AddSource:   false,
+		ReplaceAttr: nil,
+	})
 
 	fh.mu.Lock()
 	oldf := fh.file
@@ -147,6 +156,7 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
+	// Watches for system signals in a separate goroutine so it doesn't block the main work loop
 	go func() {
 		for {
 			sig := <-sigCh
