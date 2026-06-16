@@ -6,11 +6,11 @@ import (
 	"html/template"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"sync"
 	"syscall"
-	"time"
 )
 
 const (
@@ -191,17 +191,32 @@ func main() {
 	// }
 
 	// Example work loop: write a log message every 5s
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	// ticker := time.NewTicker(5 * time.Second)
+	// defer ticker.Stop()
 
-	logger.Info("service starting")
+	logger.Info("Sensor Hub service starting")
 	for {
 		select {
 		case <-ctx.Done():
 			logger.Info("service stopped")
 			return
-		case t := <-ticker.C:
-			logger.Info("heartbeat", "time", t.Format(time.RFC3339))
+		// case t := <-ticker.C:
+		// 	logger.Info("heartbeat", "time", t.Format(time.RFC3339))
+		// }
+		default:
+			// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
+			if configured() {
+				logAll.Info("Already configured to connect to Wi-Fi. Now test connection.")
+				if isConnected() {
+					logAll.Info("Already connected to Wi-Fi. No setup needed.")
+				} else {
+					logAll.Info("Configured Wi-Fi network not currently reachable. Starting hotspot configuration.")
+					configureViaHotspot()
+				}
+			} else {
+				logAll.Info("WiFi has not been configured. Starting hotspot configuration.")
+				configureViaHotspot()
+			}
 		}
 	}
 }
@@ -304,36 +319,36 @@ func main() {
 // 	logAll.Info(fmt.Sprintln("Setup hotspot is online again. Awaiting user retry."))
 // }
 
-// func isConnected() bool {
-// 	// Quick check to see if the device can route packets to the internet
-// 	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
-// 	err := cmd.Run()
-// 	return err == nil
-// }
+func isConnected() bool {
+	// Quick check to see if the device can route packets to the internet
+	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
+	err := cmd.Run()
+	return err == nil
+}
 
-// func configured() bool {
-// 	// Check if the device is already configured to connect to a Wi-Fi network
-// 	// We use a text file to hold the SSID of the currently configured network. If it exists, we assume we're configured.
-// 	// Filename is /var/sensorhub/sensorhub.config and contains the SSID of the currently configured network.
-// 	// If the file doesn't exist, we assume we're not configured.
-// 	_, err := os.Stat(pathToHubConfig)
-// 	if err == nil {
-// 		return true // file exists
-// 	}
-// 	// if os.IsNotExist(err) {
-// 	// 	f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
-// 	// 	if err != nil {
-// 	// 		// file might have been created concurrently or another error occurred
-// 	// 		if os.IsExist(err) {
-// 	// 			return true
-// 	// 		}
-// 	// 		return false
-// 	// 	}
-// 	// 	_ = f.Close()
-// 	// 	return false // file created
-// 	// }
-// 	return false // No config file, return false
-// }
+func configured() bool {
+	// Check if the device is already configured to connect to a Wi-Fi network
+	// We use a text file to hold the SSID of the currently configured network. If it exists, we assume we're configured.
+	// Filename is /var/sensorhub/sensorhub.config and contains the SSID of the currently configured network.
+	// If the file doesn't exist, we assume we're not configured.
+	_, err := os.Stat(pathToHubConfig)
+	if err == nil {
+		return true // file exists
+	}
+	// if os.IsNotExist(err) {
+	// 	f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
+	// 	if err != nil {
+	// 		// file might have been created concurrently or another error occurred
+	// 		if os.IsExist(err) {
+	// 			return true
+	// 		}
+	// 		return false
+	// 	}
+	// 	_ = f.Close()
+	// 	return false // file created
+	// }
+	return false // No config file, return false
+}
 
 // func initConfig(ssid string, path string) error {
 // 	// Write the SSID to the config file for persistence
