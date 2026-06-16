@@ -206,15 +206,15 @@ func main() {
 		default:
 			// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
 			if configured() {
-				logAll.Info("Already configured to connect to Wi-Fi. Now test connection.")
+				logger.Info("Already configured to connect to Wi-Fi. Now test connection.")
 				if isConnected() {
-					logAll.Info("Already connected to Wi-Fi. No setup needed.")
+					logger.Info("Already connected to Wi-Fi. No setup needed.")
 				} else {
-					logAll.Info("Configured Wi-Fi network not currently reachable. Starting hotspot configuration.")
+					logger.Info("Configured Wi-Fi network not currently reachable. Starting hotspot configuration.")
 					configureViaHotspot()
 				}
 			} else {
-				logAll.Info("WiFi has not been configured. Starting hotspot configuration.")
+				logger.Info("WiFi has not been configured. Starting hotspot configuration.")
 				configureViaHotspot()
 			}
 		}
