@@ -17,6 +17,8 @@ import (
 	"sync"
 )
 
+var logPath = "/var/log/sensorhub.log"
+
 type SlogHandler struct {
 	h   slog.Handler
 	mu  *sync.Mutex
@@ -27,7 +29,13 @@ func ConfigureLogging(logLevel slog.Level, logging bool) *slog.Logger {
 	var programLevel = new(slog.LevelVar)
 	programLevel.Set(logLevel)
 	// Send to stdout, could be a file or other io.Writer
-	log := slog.New(SlogNewHandler(os.Stdout, &slog.HandlerOptions{Level: programLevel, AddSource: false}))
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil
+	}
+	// log := slog.New(SlogNewHandler(os.Stdout, &slog.HandlerOptions{Level: programLevel, AddSource: false}))
+	log := slog.New(SlogNewHandler(f, &slog.HandlerOptions{Level: programLevel, AddSource: false}))
+	slog.SetDefault(log)
 	if logging {
 		log.Debug("Log handler configured for DEBUG.")
 	}
