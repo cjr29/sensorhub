@@ -19,15 +19,12 @@ const (
 )
 
 const (
-	logDir  = "/var/log/sensorhub"
-	logFile = "/var/log/sensorhub/sensorhub.log"
-	pidFile = "/run/sensorhub/sensorhub.pid"
-)
-
-const (
+	logDir          = "/var/log/sensorhub"
+	logFile         = "/var/log/sensorhub/sensorhub.log"
+	pidFile         = "/run/sensorhub/sensorhub.pid"
 	hotspotProfile  = "HubHotspot" // The nmcli profile name for your Pi setup AP
 	serverPort      = ":80"
-	pathToHubConfig = "/var/sensorhub/sensorhub.config"
+	pathToHubConfig = "/var/sensorhub/sensorhub.conf"
 )
 
 type fileHandler struct {
@@ -123,6 +120,7 @@ func ensureLogDir() error {
 }
 
 var logAll *slog.Logger
+var logger *slog.Logger
 
 var tmpl = template.Must(template.New("").ParseGlob("templates/*.html"))
 
@@ -141,7 +139,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to open log file: %v\n", err)
 		os.Exit(1)
 	}
-	logger := slog.New(fh)
+	logger = slog.New(fh)
 
 	if err := writePID(pidFile); err != nil {
 		logger.Error("failed to write pidfile", "err", err)
@@ -175,20 +173,6 @@ func main() {
 			}
 		}
 	}()
-
-	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
-	// if configured() {
-	// 	logAll.Info("Already configured to connect to Wi-Fi. Now test connection.")
-	// 	if isConnected() {
-	// 		logAll.Info("Already connected to Wi-Fi. No setup needed.")
-	// 	} else {
-	// 		logAll.Info("Configured Wi-Fi network not currently reachable. Starting hotspot configuration.")
-	// 		configureViaHotspot()
-	// 	}
-	// } else {
-	// 	logAll.Info("WiFi has not been configured. Starting hotspot configuration.")
-	// 	configureViaHotspot()
-	// }
 
 	// Example work loop: write a log message every 5s
 	// ticker := time.NewTicker(5 * time.Second)
@@ -333,6 +317,7 @@ func configured() bool {
 	// If the file doesn't exist, we assume we're not configured.
 	_, err := os.Stat(pathToHubConfig)
 	if err == nil {
+		logger.Info("Configuration file found at " + pathToHubConfig)
 		return true // file exists
 	}
 	// if os.IsNotExist(err) {
