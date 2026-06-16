@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"time"
 )
 
 const (
@@ -175,8 +176,8 @@ func main() {
 	}()
 
 	// Example work loop: write a log message every 5s
-	// ticker := time.NewTicker(5 * time.Second)
-	// defer ticker.Stop()
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
 	logger.Info("Sensor Hub service starting")
 	for {
@@ -192,7 +193,7 @@ func main() {
 			if configured() {
 				logger.Info("Already configured to connect to Wi-Fi. Now test connection.")
 				if isConnected() {
-					logger.Info("Already connected to Wi-Fi. No setup needed.")
+					logger.Info("WiFi working.")
 				} else {
 					logger.Info("Configured Wi-Fi network not currently reachable. Starting hotspot configuration.")
 					configureViaHotspot()
@@ -201,6 +202,8 @@ func main() {
 				logger.Info("WiFi has not been configured. Starting hotspot configuration.")
 				configureViaHotspot()
 			}
+			logger.Info("Sensor Hub setup complete. Exiting service.")
+			os.Exit(0)
 		}
 	}
 }
