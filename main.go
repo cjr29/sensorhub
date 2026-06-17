@@ -123,7 +123,7 @@ func ensureLogDir() error {
 var logAll *slog.Logger
 var logger *slog.Logger
 
-var tmpl = template.Must(template.New("").ParseGlob("templates/*.html"))
+var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
 
 func main() {
 
