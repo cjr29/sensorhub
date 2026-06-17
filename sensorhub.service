@@ -1,0 +1,17 @@
+[Unit]
+Description=Sensor Hub service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+RuntimeDirectory=sensorhub
+PIDFile=/run/sensorhub/sensorhub.pid
+WorkingDirectory=/var/lib/sensorhub
+ExecStart=/usr/local/bin/sensorhub/sensorhub
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
