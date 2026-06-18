@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var tmpl = template.Must(template.New("").ParseGlob("templates/*.html"))
+var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
 
 func configureViaHotspot() {
 	http.HandleFunc("/", indexHandler)
