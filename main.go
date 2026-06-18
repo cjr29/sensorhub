@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
-	"time"
 )
 
 const (
@@ -172,9 +171,15 @@ func main() {
 		}
 	}()
 
+	// Start the background processing threads
+	go processSensorData()    // Background thread to process sensor data
+	go restService()          // Background thread to log that the REST service is still running
+	go removeExpiredSensors() // Background thread to process expired sensors
+	go monitorWiFi()          // Background thread to monitor Wi-Fi connection and handle setup if needed
+
 	// Example work loop: write a log message every 5s
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	// ticker := time.NewTicker(5 * time.Second)
+	// defer ticker.Stop()
 
 	logger.Info("Sensor Hub service starting")
 	for {
