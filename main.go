@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"html/template"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -122,8 +121,6 @@ func ensureLogDir() error {
 
 var logAll *slog.Logger
 var logger *slog.Logger
-
-var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
 
 func main() {
 

@@ -1,19 +1,21 @@
 package main
 
 import (
+	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 )
+
+var tmpl = template.Must(template.New("").ParseGlob("templates/*.html"))
 
 func configureViaHotspot() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/page1", listHandler)
 	http.HandleFunc("/page2", loginHandler)
 
-	// http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(os.DirFS("assets")))))
+	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
+	// http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(os.DirFS("assets")))))
 
 	log.Println("Listening on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
