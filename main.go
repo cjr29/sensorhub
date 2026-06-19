@@ -18,6 +18,18 @@ const (
 )
 
 const (
+	logDir  = "/var/log/sensorhub"
+	logFile = "/var/log/sensorhub/sensorhub.log"
+)
+
+const (
+	LevelDebug slog.Level = iota
+	LevelInfo
+	LevelWarn
+	LevelError
+)
+
+const (
 	pidFile         = "/run/sensorhub/sensorhub.pid"
 	hotspotProfile  = "HubHotspot" // The nmcli profile name for your Pi setup AP
 	serverPort      = ":80"
@@ -151,7 +163,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger = slog.New(fh)
-	logger.Info("Logging configured. Starting Sensor Hub...")
+	logger.Info(fmt.Sprintf("Logging configured for %s. Starting Sensor Hub...", LevelDebug.String()))
 
 	// if err := writePID(pidFile); err != nil {
 	// 	logger.Error("Failed to write pidfile", "err", err)

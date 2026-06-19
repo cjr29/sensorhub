@@ -8,28 +8,7 @@ package main
 	Supports log.Info, log.Debug, log.Warn, log.Error, etc. with the same syntax as the standard library slog.
 */
 
-import (
-	"context"
-	"fmt"
-	"io"
-	"log/slog"
-	"os"
-	"strings"
-	"sync"
-)
-
-const (
-	logDir  = "/var/log/sensorhub"
-	logFile = "/var/log/sensorhub/sensorhub.log"
-)
-
-const (
-	LevelDebug slog.Level = iota
-	LevelInfo
-	LevelWarn
-	LevelError
-)
-
+/*
 type SlogHandler struct {
 	h    slog.Handler
 	mu   *sync.Mutex
@@ -130,3 +109,4 @@ func (sh *SlogHandler) Reopen(out io.Writer) error {
 	}
 	return nil
 }
+*/
