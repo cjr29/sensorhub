@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -17,38 +18,48 @@ import (
 	"sync"
 )
 
-// var logPath = "/var/log/sensorhub.log"
-var sfh *SlogHandler // log file handle
+const (
+	logDir  = "/var/log/sensorhub"
+	logFile = "/var/log/sensorhub/sensorhub.log"
+)
+
+const (
+	LevelDebug slog.Level = iota
+	LevelInfo
+	LevelWarn
+	LevelError
+)
 
 type SlogHandler struct {
-	h   slog.Handler
-	mu  *sync.Mutex
-	out io.Writer
+	h    slog.Handler
+	mu   *sync.Mutex
+	file *os.File
 }
 
 func ConfigureLogging(logLevel slog.Level, logging bool) *slog.Logger {
-	var programLevel = new(slog.LevelVar)
-	programLevel.Set(logLevel)
-	// Send to stdout, could be a file or other io.Writer
+	// Ensure the log directory exists before attempting to create the log file.
+	if err := ensureLogDir(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create log dir: %v\n", err)
+		os.Exit(1)
+	}
 	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil
 	}
-	// log := slog.New(SlogNewHandler(os.Stdout, &slog.HandlerOptions{Level: programLevel, AddSource: false}))
-	log := slog.New(SlogNewHandler(f, &slog.HandlerOptions{Level: programLevel, AddSource: false}))
+	log := slog.New(SlogNewHandler(f, &slog.HandlerOptions{Level: logLevel, AddSource: false}))
 	slog.SetDefault(log)
 	if logging {
-		log.Debug("Log handler configured for DEBUG.")
+		log.Info(fmt.Sprintf("Log handler configured for %s.", logLevel.String()))
 	}
 	return log
 }
 
-func SlogNewHandler(o io.Writer, opts *slog.HandlerOptions) *SlogHandler {
+func SlogNewHandler(o *os.File, opts *slog.HandlerOptions) *SlogHandler {
 	if opts == nil {
 		opts = &slog.HandlerOptions{}
 	}
 	return &SlogHandler{
-		out: o,
+		file: o,
 		h: slog.NewTextHandler(o, &slog.HandlerOptions{
 			Level:       opts.Level,
 			AddSource:   opts.AddSource,
@@ -63,11 +74,11 @@ func (h *SlogHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *SlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &SlogHandler{h: h.h.WithAttrs(attrs), out: h.out, mu: h.mu}
+	return &SlogHandler{h: h.h.WithAttrs(attrs), file: h.file, mu: h.mu}
 }
 
 func (h *SlogHandler) WithGroup(name string) slog.Handler {
-	return &SlogHandler{h: h.h.WithGroup(name), out: h.out, mu: h.mu}
+	return &SlogHandler{h: h.h.WithGroup(name), file: h.file, mu: h.mu}
 }
 
 func (h *SlogHandler) Handle(ctx context.Context, r slog.Record) error {
@@ -90,8 +101,32 @@ func (h *SlogHandler) Handle(ctx context.Context, r slog.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	_, err := h.out.Write(b)
+	_, err := h.file.Write(b)
 
 	return err
+}
 
+// Reopen closes the current file and opens a new one at the same path, swapping the handler.
+func (sh *SlogHandler) Reopen(out io.Writer) error {
+	newf, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil
+	}
+	newh := slog.NewTextHandler(newf, &slog.HandlerOptions{
+		Level:       LogLevel,
+		AddSource:   false,
+		ReplaceAttr: nil,
+	})
+	log := slog.New(SlogNewHandler(newf, &slog.HandlerOptions{Level: LogLevel, AddSource: false}))
+	slog.SetDefault(log)
+
+	sh.mu.Lock()
+	oldf := sh.file
+	sh.file = newf
+	sh.h = newh
+	sh.mu.Unlock()
+	if oldf != nil {
+		_ = oldf.Close()
+	}
+	return nil
 }

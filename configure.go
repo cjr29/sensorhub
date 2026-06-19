@@ -19,16 +19,16 @@ func configureViaHotspot() {
 
 	log.Println("Listening on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal(err)
+		logger.Error(err.Error())
 	}
 }
 
 func render(w http.ResponseWriter, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
-		log.Println("template execute error:", err)
-	}
+		if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
+			http.Error(w, "template error", http.StatusInternalServerError)
+			logger.Error("template execute error", "error", err.Error())
+		}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {

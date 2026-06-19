@@ -112,11 +112,11 @@ func connectToWiFi(ssid, password string) error {
 	var cmd *exec.Cmd
 	availableNetworks, err := getAvailableNetworks()
 	if err != nil {
-		logAll.Error("Failed to get available Wi-Fi networks", "error", err)
+		logger.Error("Failed to get available Wi-Fi networks", "error", err)
 	} else {
-		logAll.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
+		logger.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
 	}
-	logAll.Info(fmt.Sprintf("Attempting to connect to SSID: %s", ssid))
+	logger.Info(fmt.Sprintf("Attempting to connect to SSID: %s", ssid))
 	if password == "" {
 		cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid)
 	} else {
