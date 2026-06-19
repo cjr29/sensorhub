@@ -199,10 +199,10 @@ func main() {
 	}()
 
 	// Start the background processing threads
-	go processSensorData()    // Background thread to process sensor data
-	go restService()          // Background thread to log that the REST service is still running
-	go removeExpiredSensors() // Background thread to process expired sensors
-	go monitorWiFi()          // Background thread to monitor Wi-Fi connection and handle setup if needed
+	go processSensorData(ctx)    // Background thread to process sensor data
+	go restService(ctx)          // Background thread to log that the REST service is still running
+	go removeExpiredSensors(ctx) // Background thread to process expired sensors
+	go monitorWiFi(ctx)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	// Example work loop: write a log message every 5s
 	// ticker := time.NewTicker(5 * time.Second)

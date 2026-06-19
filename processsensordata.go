@@ -1,14 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
 
-func processSensorData() {
+func processSensorData(ctx context.Context) error {
 	for {
-		amt := 10 // seconds delay
-		time.Sleep(time.Duration(amt) * time.Second)
-		logger.Info(fmt.Sprintf("Processing sensor data every %d seconds", amt))
+		select {
+		case <-ctx.Done():
+			return ctx.Err() // quit
+		default:
+			amt := 120 // seconds delay
+			time.Sleep(time.Duration(amt) * time.Second)
+			logger.Info(fmt.Sprintf("Processing sensor data every %d seconds", amt))
+		}
 	}
 }

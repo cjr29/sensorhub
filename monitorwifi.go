@@ -1,14 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
 
-func monitorWiFi() {
+func monitorWiFi(ctx context.Context) error {
 	for {
-		amt := 60 // seconds delay
-		time.Sleep(time.Duration(amt) * time.Second)
-		logger.Info(fmt.Sprintf("Check WiFi availability every %d seconds", amt))
+		select {
+		case <-ctx.Done():
+			return ctx.Err() // quit
+		default:
+			amt := 120 // seconds delay
+			time.Sleep(time.Duration(amt) * time.Second)
+			logger.Info(fmt.Sprintf("Check WiFi availability every %d seconds", amt))
+		}
 	}
 }
