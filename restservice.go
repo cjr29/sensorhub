@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -11,9 +12,9 @@ func restService(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err() // quit
 		default:
-			amt := 120 // seconds delay
+			amt := 60 // seconds delay
 			time.Sleep(time.Duration(amt) * time.Second)
-			logger.Info("REST service still running ...")
+			logger.Info(fmt.Sprintf("REST service still running (checked every %d seconds) ...", amt))
 		}
 	}
 }

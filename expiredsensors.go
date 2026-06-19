@@ -12,7 +12,7 @@ func removeExpiredSensors(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err() // quit
 		default:
-			amt := 120 // seconds delay
+			amt := 300 // seconds delay
 			time.Sleep(time.Duration(amt) * time.Second)
 			logger.Info(fmt.Sprintf("Remove expired sensors every %d seconds", amt))
 		}
