@@ -6,8 +6,8 @@ import (
 
 func removeExpiredSensors() {
 	for {
-		amt := 10 // seconds delay
+		amt := 120 // seconds delay
 		time.Sleep(time.Duration(amt) * time.Second)
-		logger.Info("Processing sensor data every", "seconds", amt)
+		logger.Info("Remove expired sensors every", "seconds", amt)
 	}
 }

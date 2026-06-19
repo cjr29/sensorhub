@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"sync"
 	"syscall"
 )
 
@@ -26,76 +25,76 @@ const (
 	pathToHubConfig = "/var/sensorhub/sensorhub.conf"
 )
 
-type fileHandler struct {
-	mu   sync.RWMutex
-	file *os.File
-	h    slog.Handler
-}
+// type fileHandler struct {
+// 	mu   sync.RWMutex
+// 	file *os.File
+// 	h    slog.Handler
+// }
 
-func newFileHandler(path string) (*fileHandler, error) {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return nil, err
-	}
-	h := slog.NewTextHandler(f, &slog.HandlerOptions{
-		Level:       LogLevel,
-		AddSource:   false,
-		ReplaceAttr: nil,
-	})
-	return &fileHandler{file: f, h: h}, nil
-}
+// func newFileHandler(path string) (*fileHandler, error) {
+// 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	h := slog.NewTextHandler(f, &slog.HandlerOptions{
+// 		Level:       LogLevel,
+// 		AddSource:   false,
+// 		ReplaceAttr: nil,
+// 	})
+// 	return &fileHandler{file: f, h: h}, nil
+// }
 
-func (fh *fileHandler) Handle(ctx context.Context, r slog.Record) error {
-	fh.mu.RLock()
-	h := fh.h
-	fh.mu.RUnlock()
-	return h.Handle(ctx, r)
-}
+// func (fh *fileHandler) Handle(ctx context.Context, r slog.Record) error {
+// 	fh.mu.RLock()
+// 	h := fh.h
+// 	fh.mu.RUnlock()
+// 	return h.Handle(ctx, r)
+// }
 
-func (fh *fileHandler) Enabled(ctx context.Context, l slog.Level) bool {
-	fh.mu.RLock()
-	defer fh.mu.RUnlock()
-	return fh.h.Enabled(ctx, l)
-}
+// func (fh *fileHandler) Enabled(ctx context.Context, l slog.Level) bool {
+// 	fh.mu.RLock()
+// 	defer fh.mu.RUnlock()
+// 	return fh.h.Enabled(ctx, l)
+// }
 
-func (fh *fileHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	fh.mu.RLock()
-	h := fh.h.WithAttrs(attrs)
-	fh.mu.RUnlock()
-	return &fileHandler{file: fh.file, h: h}
-}
+// func (fh *fileHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+// 	fh.mu.RLock()
+// 	h := fh.h.WithAttrs(attrs)
+// 	fh.mu.RUnlock()
+// 	return &fileHandler{file: fh.file, h: h}
+// }
 
-func (fh *fileHandler) WithGroup(name string) slog.Handler {
-	fh.mu.RLock()
-	h := fh.h.WithGroup(name)
-	fh.mu.RUnlock()
-	return &fileHandler{file: fh.file, h: h}
-}
+// func (fh *fileHandler) WithGroup(name string) slog.Handler {
+// 	fh.mu.RLock()
+// 	h := fh.h.WithGroup(name)
+// 	fh.mu.RUnlock()
+// 	return &fileHandler{file: fh.file, h: h}
+// }
 
 // Reopen closes the current file and opens a new one at the same path, swapping the handler.
-func (fh *fileHandler) Reopen(path string) error {
-	newf, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
+// func (fh *fileHandler) Reopen(path string) error {
+// 	newf, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	newh := slog.NewTextHandler(newf, &slog.HandlerOptions{
-		Level:       LogLevel,
-		AddSource:   false,
-		ReplaceAttr: nil,
-	})
+// 	newh := slog.NewTextHandler(newf, &slog.HandlerOptions{
+// 		Level:       LogLevel,
+// 		AddSource:   false,
+// 		ReplaceAttr: nil,
+// 	})
 
-	fh.mu.Lock()
-	oldf := fh.file
-	fh.file = newf
-	fh.h = newh
-	fh.mu.Unlock()
+// 	fh.mu.Lock()
+// 	oldf := fh.file
+// 	fh.file = newf
+// 	fh.h = newh
+// 	fh.mu.Unlock()
 
-	if oldf != nil {
-		_ = oldf.Close()
-	}
-	return nil
-}
+// 	if oldf != nil {
+// 		_ = oldf.Close()
+// 	}
+// 	return nil
+// }
 
 func writePID(pidPath string) error {
 	if err := os.MkdirAll(filepath.Dir(pidPath), 0o755); err != nil {
@@ -123,23 +122,23 @@ var logger *slog.Logger
 
 func main() {
 
-	// logAll = ConfigureLogging(LogLevel, Logging)
-	// logAll.Info("Starting Sensor Hub...")
+	logger = ConfigureLogging(LogLevel, Logging)
+	logger.Info("Starting Sensor Hub...")
 
 	if err := ensureLogDir(); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create log dir: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to create log dir: %v\n", err)
 		os.Exit(1)
 	}
 
-	fh, err := newFileHandler(logFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open log file: %v\n", err)
-		os.Exit(1)
-	}
-	logger = slog.New(fh)
+	// fh, err := newFileHandler(logFile)
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Failed to open log file: %v\n", err)
+	// 	os.Exit(1)
+	// }
+	// logger = slog.New(fh)
 
 	if err := writePID(pidFile); err != nil {
-		logger.Error("failed to write pidfile", "err", err)
+		logger.Error("Failed to write pidfile", "err", err)
 		// continue; not fatal
 	}
 	defer removePID(pidFile)
@@ -158,11 +157,12 @@ func main() {
 			switch sig {
 			case syscall.SIGHUP:
 				// reopen logs for logrotate
-				if err := fh.Reopen(logFile); err != nil {
-					logger.Error("failed to reopen log file", "err", err)
-				} else {
-					logger.Info("reopened log file after SIGHUP")
-				}
+				// if err := fh.Reopen(logFile); err != nil {
+				// if err := f.Reopen(logFile); err != nil {
+				// 	logger.Error("failed to reopen log file", "err", err)
+				// } else {
+				// 	logger.Info("reopened log file after SIGHUP")
+				// }
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Info("shutting down", "signal", sig.String())
 				cancel()

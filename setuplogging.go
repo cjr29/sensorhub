@@ -17,7 +17,8 @@ import (
 	"sync"
 )
 
-var logPath = "/var/log/sensorhub.log"
+// var logPath = "/var/log/sensorhub.log"
+var sfh *SlogHandler // log file handle
 
 type SlogHandler struct {
 	h   slog.Handler
@@ -29,7 +30,7 @@ func ConfigureLogging(logLevel slog.Level, logging bool) *slog.Logger {
 	var programLevel = new(slog.LevelVar)
 	programLevel.Set(logLevel)
 	// Send to stdout, could be a file or other io.Writer
-	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil
 	}
