@@ -10,6 +10,7 @@ func monitorWiFi(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Info("Shutting down Wi-Fi monitoring thread.")
 			return ctx.Err() // quit
 		default:
 			amt := 120 // seconds delay

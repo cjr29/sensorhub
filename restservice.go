@@ -10,6 +10,7 @@ func restService(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Info("Shutting down REST service thread.")
 			return ctx.Err() // quit
 		default:
 			amt := 60 // seconds delay

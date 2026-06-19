@@ -10,6 +10,7 @@ func processSensorData(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Info("Shutting down sensor data processing thread.")
 			return ctx.Err() // quit
 		default:
 			amt := 10 // seconds delay
