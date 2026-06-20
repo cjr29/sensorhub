@@ -42,10 +42,12 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 {{end}}
 {{if .Networks}}
 <table>
-  <col style="width: 50%;" />
-  <col style="width: 20%;" />
-  <col style="width: 30%;" />
-  <thead><tr><th>SSID</th><th>SIGNAL</th><th>SECURITY</th></tr></thead>
+  <thead>
+  	<tr>
+		<th width="50%">SSID</th>
+		<th width="20%">SIGNAL</th>
+		<th width="30%">SECURITY</th></tr>
+  </thead>
   <tbody>
   {{range .Networks}}
     <tr>
