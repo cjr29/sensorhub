@@ -22,12 +22,12 @@ const (
 	logFile = "/var/log/sensorhub/sensorhub.log"
 )
 
-const (
-	LevelDebug slog.Level = iota
-	LevelInfo
-	LevelWarn
-	LevelError
-)
+// const (
+// 	LevelDebug slog.Level = iota
+// 	LevelInfo
+// 	LevelWarn
+// 	LevelError
+// )
 
 const (
 	pidFile         = "/run/sensorhub/sensorhub.pid"
@@ -146,7 +146,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger = slog.New(fh)
-	logger.Info(fmt.Sprintf("Logging configured for %s. Starting Sensor Hub...", LevelDebug.String()))
+	logger.Info(fmt.Sprintf("Logging configured for %s. Starting Sensor Hub...", LogLevel.String()))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
