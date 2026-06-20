@@ -42,7 +42,7 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 {{end}}
 {{if .Networks}}
 <table>
-  <thead><tr><th>SSID</th><th>BSSID</th><th>CHAN</th><th>RATE</th><th>SIGNAL</th><th>SECURITY</th></tr></thead>
+  <thead><tr><th>SSID</th><th>SIGNAL</th><th>SECURITY</th></tr></thead>
   <tbody>
   {{range .Networks}}
     <tr>
@@ -115,19 +115,18 @@ func parseNmcliScan(raw string) []Network {
 		if l == "" {
 			continue
 		}
-		// nmcli -t -f SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY device wifi list
 		parts := strings.Split(l, ":")
 		// normalize length
 		for len(parts) < 6 {
 			parts = append(parts, "")
 		}
 		nets = append(nets, Network{
-			SSID:     parts[0],
-			BSSID:    parts[1],
-			CHAN:     parts[2],
-			RATE:     parts[3],
-			SIGNAL:   parts[4],
-			SECURITY: parts[5],
+			SSID: parts[0],
+			// BSSID:    parts[1],
+			// CHAN:     parts[2],
+			// RATE:     parts[3],
+			SIGNAL:   parts[1],
+			SECURITY: parts[2],
 		})
 	}
 	return nets
@@ -138,7 +137,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
 	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
-	out, err := runNmcli("-t", "-f", "SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list")
+	out, err := runNmcli("-p", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
 	if err != nil {
 		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
 		_ = pageTmpl.Execute(w, data)

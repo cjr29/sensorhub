@@ -17,7 +17,7 @@ func configureViaHotspot() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	// http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(os.DirFS("assets")))))
 
-	log.Println("Listening on :8080")
+	log.Println("Sensor Hub listening on :8080, for WiFi configuration...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		logger.Error(err.Error())
 	}
