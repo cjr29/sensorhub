@@ -15,7 +15,7 @@ func configureViaHotspot() {
 	http.HandleFunc("/page2", loginHandler)
 
 	// http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("/usr/local/bin/sensorhub/static"))))
 
 	log.Println("Sensor Hub listening on :8080, for WiFi configuration...")
 	logger.Info("Sensor Hub HTTP server starting", "address", listenAddr)
