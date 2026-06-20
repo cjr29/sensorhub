@@ -30,6 +30,7 @@ var pageTmpl = template.Must(template.New("page").Parse(`
   th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e1e1e1; }
   th { background: #f7f7f7; }
   .muted { color: #008fb7; font-size: .9rem; }
+  .data { font-family: monospace; color: #b70065;}
 </style>
 <meta http-equiv="refresh" content="{{.Refresh}}">
 </head>
@@ -40,13 +41,6 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 {{if .Error}}
   <p style="color:red">Error: {{.Error}}</p>
 {{end}}
-<style>
-  body { font-family: system-ui, -apple-system, Roboto, "Segoe UI", Arial; padding: 1rem; }
-  table { border-collapse: collapse; width: 100%; max-width: 500px; }
-  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e1e1e1; }
-  th { background: #f7f7f7; }
-  .muted { color: #008fb7; font-size: .9rem; }
-</style>
 {{if .Networks}}
 <table>
   <thead>
