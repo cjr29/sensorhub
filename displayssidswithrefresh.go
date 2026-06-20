@@ -47,9 +47,6 @@ var pageTmpl = template.Must(template.New("page").Parse(`
   {{range .Networks}}
     <tr>
       <td>{{.SSID}}</td>
-      <td>{{.BSSID}}</td>
-      <td>{{.CHAN}}</td>
-      <td>{{.RATE}}</td>
       <td>{{.SIGNAL}}</td>
       <td>{{.SECURITY}}</td>
     </tr>
