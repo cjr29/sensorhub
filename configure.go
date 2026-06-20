@@ -14,7 +14,7 @@ func configureViaHotspot() {
 	http.HandleFunc("/page1", listHandler)
 	http.HandleFunc("/page2", loginHandler)
 
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	// http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(os.DirFS("assets")))))
 
 	log.Println("Listening on :8080")
@@ -25,10 +25,10 @@ func configureViaHotspot() {
 
 func render(w http.ResponseWriter, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
-			http.Error(w, "template error", http.StatusInternalServerError)
-			logger.Error("template execute error", "error", err.Error())
-		}
+	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
+		http.Error(w, "template error", http.StatusInternalServerError)
+		logger.Error("template execute error", "error", err.Error())
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
 	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
-	out, err := runNmcli("-t", "-f", "SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list")
+	out, err := runNmcli("-p", "-f", "SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list")
 	if err != nil {
 		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
 		_ = pageTmpl.Execute(w, data)

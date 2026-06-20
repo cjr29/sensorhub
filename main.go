@@ -127,23 +127,6 @@ func (fh *fileHandler) Reopen(path string) error {
 	return nil
 }
 
-// func writePID(pidPath string) error {
-// 	if err := os.MkdirAll(filepath.Dir(pidPath), 0o755); err != nil {
-// 		return err
-// 	}
-// 	f, err := os.OpenFile(pidPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer f.Close()
-// 	_, err = fmt.Fprintf(f, "%d\n", os.Getpid())
-// 	return err
-// }
-
-// func removePID(pidPath string) {
-// 	_ = os.Remove(pidPath)
-// }
-
 func ensureLogDir() error {
 	return os.MkdirAll(logDir, 0o755)
 }
@@ -164,12 +147,6 @@ func main() {
 	}
 	logger = slog.New(fh)
 	logger.Info(fmt.Sprintf("Logging configured for %s. Starting Sensor Hub...", LevelDebug.String()))
-
-	// if err := writePID(pidFile); err != nil {
-	// 	logger.Error("Failed to write pidfile", "err", err)
-	// 	// continue; not fatal
-	// }
-	// defer removePID(pidFile)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -342,6 +319,8 @@ func isConnected() bool {
 	return err == nil
 }
 
+/************************************************************************************/
+/**** Reactivate these functions once debugging is done *****************************/
 func configured() bool {
 	// Check if the device is already configured to connect to a Wi-Fi network
 	// We use a text file to hold the SSID of the currently configured network. If it exists, we assume we're configured.
