@@ -13,7 +13,7 @@ func restService(ctx context.Context) error {
 			logger.Info("Shutting down REST service thread.")
 			return ctx.Err() // quit
 		default:
-			amt := 60 // seconds delay
+			amt := 3 // seconds delay
 			time.Sleep(time.Duration(amt) * time.Second)
 			logger.Info(fmt.Sprintf("REST service still running (checked every %d seconds) ...", amt))
 		}

@@ -163,9 +163,9 @@ func main() {
 			case syscall.SIGHUP:
 				// reopen logs for logrotate
 				if err := fh.Reopen(logFile); err != nil {
-					logger.Error("failed to reopen log file", "err", err)
+					logger.Error("Failed to reopen log file", "err", err)
 				} else {
-					logger.Info("reopened log file after SIGHUP")
+					logger.Info("Reopened log file after SIGHUP")
 				}
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Info("shutting down", "signal", sig.String())
