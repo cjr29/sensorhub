@@ -168,7 +168,7 @@ func main() {
 					logger.Info("Reopened log file after SIGHUP")
 				}
 			case syscall.SIGINT, syscall.SIGTERM:
-				logger.Info("shutting down", "signal", sig.String())
+				logger.Info(fmt.Sprintf("Shutting down: %s signal...", sig.String()))
 				cancel()
 				return
 			}
