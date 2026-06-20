@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -207,6 +208,7 @@ func main() {
 			} else {
 				logger.Info("WiFi has not been configured. Starting hotspot configuration.")
 				configureViaHotspot()
+				log.Println("Web server started")
 			}
 			logger.Info("Sensor Hub setup complete. Exiting service.")
 			os.Exit(0)
