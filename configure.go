@@ -55,8 +55,8 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	data := SSIDPageData{Refresh: refreshSeconds}
 
 	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
-	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
-	out, err := runNmcli("-p", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
+	// fields: SSID,SIGNAL,SECURITY, -p pretty, -t terse, -f fields
+	out, err := runNmcli("-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
 	if err != nil {
 		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
 		_ = pageTmpl.Execute(w, data)
