@@ -23,13 +23,6 @@ const (
 	logFile = "/var/log/sensorhub/sensorhub.log"
 )
 
-// const (
-// 	LevelDebug slog.Level = iota
-// 	LevelInfo
-// 	LevelWarn
-// 	LevelError
-// )
-
 const (
 	pidFile         = "/run/sensorhub/sensorhub.pid"
 	hotspotProfile  = "HubHotspot" // The nmcli profile name for your Pi setup AP
@@ -55,13 +48,6 @@ func newFileHandler(path string) (*fileHandler, error) {
 	})
 	return &fileHandler{file: f, h: h}, nil
 }
-
-// func (fh *fileHandler) Handle(ctx context.Context, r slog.Record) error {
-// 	fh.mu.RLock()
-// 	h := fh.h
-// 	fh.mu.RUnlock()
-// 	return h.Handle(ctx, r)
-// }
 
 func (fh *fileHandler) Handle(ctx context.Context, r slog.Record) error {
 	formattedTime := r.Time.Format("2006/01/02 15:04:05")

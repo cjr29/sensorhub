@@ -1,6 +1,6 @@
-body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+body { font-family: Arial, sans-serif; max-width: 500px; margin: 2rem auto; padding: 0 1rem; }
 nav ul { list-style: none; padding: 0; }
 nav li { margin: 0.5rem 0; }
-a { color: #0073e6; text-decoration: none; }
+a { color: #0f901a; text-decoration: none; }
 table { table-layout: fixed; }
 th, td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

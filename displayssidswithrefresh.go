@@ -67,9 +67,6 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 
 type Network struct {
 	SSID     string
-	BSSID    string
-	CHAN     string
-	RATE     string
 	SIGNAL   string
 	SECURITY string
 }
@@ -124,10 +121,7 @@ func parseNmcliScan(raw string) []Network {
 			parts = append(parts, "")
 		}
 		nets = append(nets, Network{
-			SSID: parts[0],
-			// BSSID:    parts[1],
-			// CHAN:     parts[2],
-			// RATE:     parts[3],
+			SSID:     parts[0],
 			SIGNAL:   parts[1],
 			SECURITY: parts[2],
 		})
@@ -138,9 +132,8 @@ func parseNmcliScan(raw string) []Network {
 func handler(w http.ResponseWriter, r *http.Request) {
 	data := SSIDPageData{Refresh: refreshSeconds}
 
-	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
-	// fields: SSID,BSSID,CHAN,RATE,SIGNAL,SECURITY
-	out, err := runNmcli("-p", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
+	// Use nmcli to list Wi-Fi networks in terse machine-friendly format, -p pretty, -t terse, -f fields
+	out, err := runNmcli("-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
 	if err != nil {
 		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
 		_ = pageTmpl.Execute(w, data)
