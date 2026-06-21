@@ -3,27 +3,6 @@
 <head>
   <title>{{.Title}}</title>
   <link rel="stylesheet" href="../static/style.css">
-  <style>
-    body{
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      text-align:center; /* centers text + inline content, including nav links */
-    }
-    body > *{
-      max-width: 600px; /* optional */
-    }
-    nav ul{
-      list-style:none;   /* optional: removes bullets */
-      padding:0;
-      margin:0;
-    }
-    nav li{
-      display:block; /* or display:inline-block; if you want them on one line */
-    }
-  </style>
 </head>
 <body>
   <h1>{{.Title}}</h1>
