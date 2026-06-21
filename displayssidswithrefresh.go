@@ -37,6 +37,7 @@ var pageTmpl = template.Must(template.New("page").Parse(`
   th { background: #f7f7f7; }
   .muted { color: #008fb7; font-size: .9rem; }
   .data { font-family: monospace; color: #b70065;}
+</style>
 <meta http-equiv="refresh" content="{{.Refresh}}">
 </head>
 <body>
