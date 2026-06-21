@@ -25,9 +25,24 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Available Wi‑Fi Networks</title>
 <style>
-  body { text-align:center; }
-  table { border-collapse: collapse; width: 100%; max-width: 500px; }
-  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e1e1e1; }
+  body { text-align:center; margin: 0; padding: 1rem; }
+
+  /* ensure the table is centered horizontally */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 900px;   /* pick what you want */
+    margin: 0 auto;      /* key */
+    table-layout: fixed;/* optional: keeps columns aligned */
+  }
+
+  th, td {
+    text-align: left;
+    padding: .5rem;
+    border-bottom: 1px solid #e1e1e1;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
   th { background: #f7f7f7; }
   .muted { color: #008fb7; font-size: .9rem; }
   .data { font-family: monospace; color: #b70065;}
