@@ -25,13 +25,13 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Available Wi‑Fi Networks</title>
 <style>
-  body { text-align:center; margin: 0; padding: 1rem; }
+  body { font-family: Arial, sans-serif; text-align:center; margin: 0; padding: 1rem; }
 
   /* ensure the table is centered horizontally */
   table {
     border-collapse: collapse;
     width: 100%;
-    max-width: 900px;   /* pick what you want */
+    max-width: 400px;   /* pick what you want */
     margin: 0 auto;      /* key */
     table-layout: fixed;/* optional: keeps columns aligned */
   }
