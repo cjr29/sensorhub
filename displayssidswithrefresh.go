@@ -32,7 +32,6 @@ var pageTmpl = template.Must(template.New("page").Parse(`
     justify-content:center; /* horizontal */
     text-align:center;
   }
-  nav, ul { list-style-position: inside; margin: 0 auto; padding: 0; }
   table { border-collapse: collapse; width: 100%; max-width: 500px; }
   th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e1e1e1; }
   th { background: #f7f7f7; }
