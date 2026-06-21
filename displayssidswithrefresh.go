@@ -50,7 +50,7 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 <meta http-equiv="refresh" content="{{.Refresh}}">
 </head>
 <body>
-<div style="text-align:left;">
+<div style="display:flex; justify-content:flex-start;">
   <a href="/">← Back</a>
 </div>
 <h1>Available Wi‑Fi Networks</h1>
