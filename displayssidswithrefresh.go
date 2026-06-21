@@ -50,7 +50,9 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 <meta http-equiv="refresh" content="{{.Refresh}}">
 </head>
 <body>
-<a href="/">← Back</a>
+<div style="text-align:left;">
+  <a href="/">← Back</a>
+</div>
 <h1>Available Wi‑Fi Networks</h1>
 <p class="muted">Auto-refresh every {{.Refresh}} seconds</p>
 {{if .Error}}
