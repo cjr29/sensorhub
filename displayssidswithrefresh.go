@@ -25,7 +25,13 @@ var pageTmpl = template.Must(template.New("page").Parse(`
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Available Wi‑Fi Networks</title>
 <style>
-  body { font-family: system-ui, -apple-system, Roboto, "Segoe UI", Arial; padding: 1rem; text-align:center; }
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center; /* horizontal */
+    text-align:center;
+  }
   nav, ul { list-style-position: inside; margin: 0 auto; padding: 0; }
   table { border-collapse: collapse; width: 100%; max-width: 500px; }
   th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #e1e1e1; }
