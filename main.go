@@ -24,8 +24,6 @@ const (
 )
 
 const (
-	pidFile         = "/run/sensorhub/sensorhub.pid"
-	hotspotProfile  = "HubHotspot" // The nmcli profile name for your Pi setup AP
 	serverPort      = ":80"
 	pathToHubConfig = "/var/sensorhub/sensorhub.conf"
 )
@@ -162,44 +160,39 @@ func main() {
 		}
 	}()
 
-	// Start the background processing threads
-	go processSensorData(ctx)    // Background thread to process sensor data
-	go restService(ctx)          // Background thread to log that the REST service is still running
-	go removeExpiredSensors(ctx) // Background thread to process expired sensors
-	go monitorWiFi(ctx)          // Background thread to monitor Wi-Fi connection and handle setup if needed
-
 	// Example work loop: write a log message every 5s
 	// ticker := time.NewTicker(5 * time.Second)
 	// defer ticker.Stop()
 
 	logger.Info("Sensor Hub service starting")
-	for {
-		select {
-		case <-ctx.Done():
-			logger.Info("service stopped")
-			return
-		// case t := <-ticker.C:
-		// 	logger.Info("heartbeat", "time", t.Format(time.RFC3339))
-		// }
-		default:
-			// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
-			if configured() {
-				logger.Info("Already configured to connect to Wi-Fi. Now test connection.")
-				if isConnected() {
-					logger.Info("WiFi working.")
-				} else {
-					logger.Info("Configured Wi-Fi network not currently reachable. Starting hotspot configuration.")
-					configureViaHotspot()
-				}
-			} else {
-				logger.Info("WiFi has not been configured. Starting hotspot configuration.")
-				configureViaHotspot()
-				log.Println("Web server started")
-			}
-			logger.Info("Sensor Hub setup complete. Exiting service.")
-			os.Exit(0)
+
+	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
+	if configured() {
+		logger.Info("Already configured to connect to Wi-Fi. Now test connection.")
+		if isConnected() {
+			logger.Info("WiFi working.")
+		} else {
+			logger.Info("Configured Wi-Fi network not currently reachable. Starting hotspot configuration.")
+			configureViaHotspot()
 		}
+	} else {
+		logger.Info("WiFi has not been configured. Starting hotspot configuration.")
+		configureViaHotspot()
+		log.Println("Web server started")
 	}
+
+	// Start the background processing threads now that we are connected to WiFi
+	go processSensorData(ctx)    // Background thread to process sensor data
+	go restService(ctx)          // Background thread to log that the REST service is still running
+	go removeExpiredSensors(ctx) // Background thread to process expired sensors
+	go monitorWiFi(ctx)          // Background thread to monitor Wi-Fi connection and handle setup if needed
+
+	logger.Info("Sensor Hub setup complete.")
+
+	// Wait for cancellation and exit
+	<-ctx.Done()
+	logger.Info("service stopped")
+	os.Exit(0)
 }
 
 // func main() {
@@ -319,24 +312,24 @@ func configured() bool {
 		logger.Info("Configuration file found at " + pathToHubConfig)
 		return true // file exists
 	}
-	// if os.IsNotExist(err) {
-	// 	f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
-	// 	if err != nil {
-	// 		// file might have been created concurrently or another error occurred
-	// 		if os.IsExist(err) {
-	// 			return true
-	// 		}
-	// 		return false
-	// 	}
-	// 	_ = f.Close()
-	// 	return false // file created
-	// }
+	if os.IsNotExist(err) {
+		f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
+		if err != nil {
+			// file might have been created concurrently or another error occurred
+			if os.IsExist(err) {
+				return true
+			}
+			return false
+		}
+		_ = f.Close()
+		return false // file created
+	}
 	return false // No config file, return false
 }
 
-// func initConfig(ssid string, path string) error {
-// 	// Write the SSID to the config file for persistence
-// 	// Overwrites any existing content, which is fine since we only need to store the current SSID
-// 	// Creates the file if it doesn't exist, or truncates it if it does. Permissions are set to 0644 (read/write for owner, read for group and others).
-// 	return os.WriteFile(path, []byte(ssid), 0644)
-// }
+func saveSSID(ssid string, path string) error {
+	// Write the SSID to the config file for persistence
+	// Overwrites any existing content, which is fine since we only need to store the current SSID
+	// Creates the file if it doesn't exist, or truncates it if it does. Permissions are set to 0644 (read/write for owner, read for group and others).
+	return os.WriteFile(path, []byte(ssid), 0644)
+}

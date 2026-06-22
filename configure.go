@@ -15,7 +15,6 @@ func configureViaHotspot() {
 	http.HandleFunc("/page1", listHandler)
 	http.HandleFunc("/page2", loginHandler)
 
-	// http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("/usr/local/bin/sensorhub/static"))))
 
 	log.Println("Sensor Hub listening on :8080, for WiFi configuration...")
@@ -39,18 +38,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// func page1Handler(w http.ResponseWriter, r *http.Request) {
-// 	render(w, "page1.html", map[string]any{
-// 		"Title": "List of Available Networks",
-// 		"Body":  "Displays available WiFi networks, refreshed every 5 seconds.",
-// 	})
-// }
-
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	render(w, "page2.html", map[string]any{
-		"Title": "Login to WiFi Network",
-		"Body":  "Enter login information for selected WiFi network.",
-	})
+	// render(w, "page2.html", map[string]any{
+	// 	"Title": "Login to WiFi Network",
+	// 	"Body":  "Enter login information for selected WiFi network.",
+	// })
+	setupViaHotspot()
 }
 
 func listHandler(w http.ResponseWriter, r *http.Request) {

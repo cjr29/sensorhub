@@ -7,12 +7,14 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"syscall"
 	"time"
 )
 
 const (
-	HotspotSSID = "Raspi-Config-AP"
-	HotspotPass = "ConfigureMe123" // Minimum 8 characters
+	HotspotProfile = "HubHotspot" // The nmcli profile name for your Pi setup AP
+	HotspotSSID    = "Raspi-Config-AP"
+	HotspotPass    = "ConfigureMe123" // Minimum 8 characters
 )
 
 // HTML form template for the user configuration page
@@ -41,14 +43,11 @@ const inputformHTML = `
 </html>`
 
 func setupViaHotspot() {
-	if hasInternet() {
-		log.Println("🎉 Connected to internet already. Exiting.")
-		return
-	}
-
-	log.Println("⚠️ No internet detected. Starting local setup hotspot...")
+	logger.Info("Starting Sensor Hub setup hotspot...")
 	if err := startHotspot(); err != nil {
-		log.Fatalf("Failed to start hotspot: %v", err)
+		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
+		// Generate signal to stop Sensor Hub
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}
 
 	// Create a channel to catch the credentials once submitted
@@ -59,41 +58,41 @@ func setupViaHotspot() {
 	creds := <-credChan
 	targetSSID, targetPass := creds[0], creds[1]
 
-	log.Printf("📥 Received credentials for SSID: %s. Shutting down web server...", targetSSID)
+	logger.Info(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", targetSSID))
 
 	// Gracefully shut down server so the HTTP response finishes flushing to the browser
 	_ = server.Shutdown(context.Background())
 
-	log.Println("🛑 Stopping hotspot...")
+	logger.Info("🛑 Stopping hotspot...")
 	_ = stopHotspot()
 
-	log.Printf("⚡ Connecting to network '%s'...", targetSSID)
+	logger.Info(fmt.Sprintf("⚡ Connecting to network '%s'...", targetSSID))
 	if err := connectToWiFi(targetSSID, targetPass); err != nil {
-		log.Printf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err)
+		logger.Error(fmt.Sprintf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err))
 		// Option: Call main() again or loop to safely recover the hotspot state
 		return
 	}
 
-	log.Println("✅ Successfully connected to the new Wi-Fi network!")
+	logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", targetSSID))
 }
 
 // Check for live connectivity by pinging an public DNS server
-func hasInternet() bool {
-	cmd := exec.Command("ping", "-c", "1", "8.8.8.8")
-	return cmd.Run() == nil
-}
+// func hasInternet() bool {
+// 	cmd := exec.Command("ping", "-c", "1", "8.8.8.8")
+// 	return cmd.Run() == nil
+// }
 
 // Configures and enables the Pi's native hotspot using nmcli
 func startHotspot() error {
 	// 1. Delete previous config instance if leftover
-	_ = exec.Command("nmcli", "connection", "delete", "RaspiHotspot").Run()
+	_ = exec.Command("nmcli", "connection", "delete", HotspotProfile).Run()
 
 	// 2. Create the hotspot network profile
 	createCmd := exec.Command("nmcli", "device", "wifi", "hotspot",
 		"ssid", HotspotSSID,
 		"password", HotspotPass,
 		"ifname", "wlan0",
-		"con-name", "RaspiHotspot",
+		"con-name", HotspotProfile,
 	)
 	if err := createCmd.Run(); err != nil {
 		return fmt.Errorf("nmcli hotspot creation failed: %w", err)
@@ -103,24 +102,25 @@ func startHotspot() error {
 
 // Shuts down and deletes the temporary hotspot network
 func stopHotspot() error {
-	_ = exec.Command("nmcli", "connection", "down", "RaspiHotspot").Run()
-	return exec.Command("nmcli", "connection", "delete", "RaspiHotspot").Run()
+	_ = exec.Command("nmcli", "connection", "down", HotspotProfile).Run()
+	return exec.Command("nmcli", "connection", "delete", HotspotProfile).Run()
 }
 
 // Commands NetworkManager to join the user-specified network
 func connectToWiFi(ssid, password string) error {
 	var cmd *exec.Cmd
-	availableNetworks, err := getAvailableNetworks()
-	if err != nil {
-		logger.Error("Failed to get available Wi-Fi networks", "error", err)
-	} else {
-		logger.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
-	}
+	// availableNetworks, err := getAvailableNetworks()
+	// if err != nil {
+	// 	logger.Error("Failed to get available Wi-Fi networks", "error", err)
+	// } else {
+	// 	logger.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
+	// }
 	logger.Info(fmt.Sprintf("Attempting to connect to SSID: %s", ssid))
 	if password == "" {
 		cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid)
 	} else {
 		// cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
+		// Creates a connection profile called "wifi-home" just for use by sensor hub
 		cmd = exec.Command("sudo", "nmcli", "connection", "add", "type", "wifi",
 			"ifname", "wlan0", "con-name", "wifi-home", "ssid", ssid,
 			"wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password)
@@ -130,6 +130,9 @@ func connectToWiFi(ssid, password string) error {
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
+
+	// Connected to WiFi, save SSID for future reboots
+	saveSSID(ssid, pathToHubConfig)
 	return nil
 }
 
@@ -170,13 +173,13 @@ func startWebServer(credChan chan [2]string) *http.Server {
 	return server
 }
 
-func getAvailableNetworks() ([]byte, error) {
-	// Request NetworkManager to connect to target network
-	// nmcli automatically handles turning off the current AP when joining a client network
-	cmd := exec.Command("nmcli", "device", "wifi", "list")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Wi-Fi networks: %w", err)
-	}
-	return output, nil
-}
+// func getAvailableNetworks() ([]byte, error) {
+// 	// Request NetworkManager to connect to target network
+// 	// nmcli automatically handles turning off the current AP when joining a client network
+// 	cmd := exec.Command("nmcli", "device", "wifi", "list")
+// 	output, err := cmd.CombinedOutput()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to list Wi-Fi networks: %w", err)
+// 	}
+// 	return output, nil
+// }
