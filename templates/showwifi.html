@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Available Wi‑Fi Networks</title>
+
+  <style>
+    body { font-family: Arial, sans-serif; text-align:center; margin: 0; padding: 1rem; }
+
+    /* ensure the table is centered horizontally */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 400px;   /* pick what you want */
+      margin: 0 auto;      /* key */
+      table-layout: fixed;/* optional: keeps columns aligned */
+    }
+
+    th, td {
+      text-align: left;
+      padding: .5rem;
+      border-bottom: 1px solid #e1e1e1;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
+    th { background: #f7f7f7; }
+    .muted { color: #008fb7; font-size: .9rem; }
+    .data { font-family: monospace; color: #b70065;}
+  </style>
+
+  <meta http-equiv="refresh" content="{{.Refresh}}">
+</head>
+
+<body>
+  <div style="text-align:left; color: #0f901a; text-decoration: none;">
+    <a href="/">← Back</a>
+  </div>
+
+  <h1>Available Wi‑Fi Networks</h1>
+  <p class="muted">Auto-refresh every {{.Refresh}} seconds</p>
+
+  {{if .Error}}
+    <p style="color:red">Error: {{.Error}}</p>
+  {{end}}
+
+  {{if .Networks}}
+    <table>
+      <thead>
+        <tr>
+          <th width="50%">SSID</th>
+          <th width="20%">SIGNAL</th>
+          <th width="30%">SECURITY</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Networks}}
+          <tr>
+            <td>{{.SSID}}</td>
+            <td>{{.SIGNAL}}</td>
+            <td>{{.SECURITY}}</td>
+          </tr>
+        {{end}}
+      </tbody>
+    </table>
+  {{else}}
+    <p>No networks found.</p>
+  {{end}}
+</body>
+</html>
