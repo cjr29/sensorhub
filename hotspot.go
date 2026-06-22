@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	HotspotProfile = "HubHotspot" // The nmcli profile name for your Pi setup AP
-	HotspotSSID    = "Raspi-Config-AP"
-	HotspotPass    = "ConfigureMe123" // Minimum 8 characters
+	HotspotName        = "Hotspot" // The nmcli profile name for your Pi setup AP
+	HotspotSSID        = "SensorHub"
+	HotspotPass        = "ConfigureMe123" // Minimum 8 characters
+	WiFiConnectionName = "wifi-home"
 )
 
 // HTML form template for the user configuration page
@@ -85,14 +86,14 @@ func setupViaHotspot() {
 // Configures and enables the Pi's native hotspot using nmcli
 func startHotspot() error {
 	// 1. Delete previous config instance if leftover
-	_ = exec.Command("nmcli", "connection", "delete", HotspotProfile).Run()
+	_ = exec.Command("nmcli", "connection", "delete", HotspotName).Run()
 
 	// 2. Create the hotspot network profile
 	createCmd := exec.Command("nmcli", "device", "wifi", "hotspot",
 		"ssid", HotspotSSID,
 		"password", HotspotPass,
 		"ifname", "wlan0",
-		"con-name", HotspotProfile,
+		"con-name", HotspotName,
 	)
 	if err := createCmd.Run(); err != nil {
 		return fmt.Errorf("nmcli hotspot creation failed: %w", err)
@@ -102,29 +103,17 @@ func startHotspot() error {
 
 // Shuts down and deletes the temporary hotspot network
 func stopHotspot() error {
-	_ = exec.Command("nmcli", "connection", "down", HotspotProfile).Run()
-	return exec.Command("nmcli", "connection", "delete", HotspotProfile).Run()
+	_ = exec.Command("nmcli", "connection", "down", HotspotName).Run()
+	return exec.Command("nmcli", "connection", "delete", HotspotName).Run()
 }
 
 // Commands NetworkManager to join the user-specified network
 func connectToWiFi(ssid, password string) error {
 	var cmd *exec.Cmd
-	// availableNetworks, err := getAvailableNetworks()
-	// if err != nil {
-	// 	logger.Error("Failed to get available Wi-Fi networks", "error", err)
-	// } else {
-	// 	logger.Info(fmt.Sprintf("Available Wi-Fi networks:\n%s\n", string(availableNetworks)))
-	// }
+	// Remove old wifi connection
+	cmd = exec.Command("sudo", "nmcli", "connection", "delete", "wifi-home")
 	logger.Info(fmt.Sprintf("Attempting to connect to SSID: %s", ssid))
-	if password == "" {
-		cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid)
-	} else {
-		// cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
-		// Creates a connection profile called "wifi-home" just for use by sensor hub
-		cmd = exec.Command("sudo", "nmcli", "connection", "add", "type", "wifi",
-			"ifname", "wlan0", "con-name", "wifi-home", "ssid", ssid,
-			"wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password)
-	}
+	cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
