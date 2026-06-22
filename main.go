@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -153,7 +152,7 @@ func main() {
 					logger.Info("Reopened log file after SIGHUP")
 				}
 			case syscall.SIGINT, syscall.SIGTERM:
-				logger.Info(fmt.Sprintf("Shutting down: %s signal...", sig.String()))
+				logger.Info(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
 				cancel()
 				return
 			}
@@ -179,7 +178,7 @@ func main() {
 	} else {
 		logger.Info("WiFi has not been configured. Starting hotspot configuration.")
 		configureViaHotspot()
-		log.Println("WiFi has been conected to %s")
+		logger.Info(fmt.Sprintf("WiFi has been conected to %s", getSSID()))
 	}
 
 	// Start the background processing threads now that we are connected to WiFi
@@ -313,7 +312,7 @@ func configured() bool {
 		logger.Info("Configuration file found at " + pathToHubConfig)
 		ssid := getSSID()
 		if ssid != "" {
-		return true // file exists
+			return true // file exists
 		} else {
 			return false
 		}
