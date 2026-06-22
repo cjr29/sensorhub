@@ -168,17 +168,18 @@ func main() {
 
 	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	if configured() {
-		logger.Info("Already configured to connect to Wi-Fi. Now test connection.")
+		ssid := getSSID()
+		logger.Info(fmt.Sprintf("Already configured to connect to Wi-Fi SSID:%s. Now test connection.", ssid))
 		if isConnected() {
 			logger.Info("WiFi working.")
 		} else {
-			logger.Info("Configured Wi-Fi network not currently reachable. Starting hotspot configuration.")
+			logger.Info(fmt.Sprintf("Configured Wi-Fi network %s not currently reachable. Starting hotspot configuration.", ssid))
 			configureViaHotspot()
 		}
 	} else {
 		logger.Info("WiFi has not been configured. Starting hotspot configuration.")
 		configureViaHotspot()
-		log.Println("Web server started")
+		log.Println("WiFi has been conected to %s")
 	}
 
 	// Start the background processing threads now that we are connected to WiFi
@@ -310,20 +311,14 @@ func configured() bool {
 	_, err := os.Stat(pathToHubConfig)
 	if err == nil {
 		logger.Info("Configuration file found at " + pathToHubConfig)
+		ssid := getSSID()
+		if ssid != "" {
 		return true // file exists
-	}
-	if os.IsNotExist(err) {
-		f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
-		if err != nil {
-			// file might have been created concurrently or another error occurred
-			if os.IsExist(err) {
-				return true
-			}
+		} else {
 			return false
 		}
-		_ = f.Close()
-		return false // file created
 	}
+
 	return false // No config file, return false
 }
 
@@ -331,5 +326,19 @@ func saveSSID(ssid string, path string) error {
 	// Write the SSID to the config file for persistence
 	// Overwrites any existing content, which is fine since we only need to store the current SSID
 	// Creates the file if it doesn't exist, or truncates it if it does. Permissions are set to 0644 (read/write for owner, read for group and others).
+	_, err := os.Stat(pathToHubConfig)
+	if os.IsNotExist(err) {
+		f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
+		_ = f.Close()
+		return err // file created
+	}
 	return os.WriteFile(path, []byte(ssid), 0644)
+}
+
+func getSSID() string {
+	data, err := os.ReadFile(pathToHubConfig)
+	if err != nil {
+		panic(err)
+	}
+	return string(data)
 }

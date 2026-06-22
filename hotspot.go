@@ -74,6 +74,8 @@ func setupViaHotspot() {
 		return
 	}
 
+	// Write out the SSID to the persistent config file
+
 	logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", targetSSID))
 }
 
