@@ -13,7 +13,7 @@ func processSensorData(ctx context.Context) error {
 			logger.Info("Shutting down sensor data processing thread.")
 			return ctx.Err() // quit
 		default:
-			amt := 1 // seconds delay
+			amt := 3600 // seconds delay
 			time.Sleep(time.Duration(amt) * time.Second)
 			logger.Info(fmt.Sprintf("Processing sensor data every %d seconds", amt))
 		}

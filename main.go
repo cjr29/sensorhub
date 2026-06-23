@@ -130,7 +130,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger = slog.New(fh)
-	logger.Info(fmt.Sprintf("Logging configured for %s. Starting Sensor Hub...", LogLevel.String()))
+	logger.Info(fmt.Sprintf("Logging configured for %s.", LogLevel.String()))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -158,12 +158,6 @@ func main() {
 			}
 		}
 	}()
-
-	// Example work loop: write a log message every 5s
-	// ticker := time.NewTicker(5 * time.Second)
-	// defer ticker.Stop()
-
-	logger.Info("Sensor Hub service starting")
 
 	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	if configured() {
@@ -309,7 +303,6 @@ func configured() bool {
 	// If the file doesn't exist, we assume we're not configured.
 	_, err := os.Stat(pathToHubConfig)
 	if err == nil {
-		logger.Info("Configuration file found at " + pathToHubConfig)
 		ssid := getSSID()
 		if ssid != "" {
 			return true // file exists
@@ -317,8 +310,7 @@ func configured() bool {
 			return false
 		}
 	}
-
-	return false // No config file, return false
+	return false // No config file or not configured, return false
 }
 
 func saveSSID(ssid string, path string) error {

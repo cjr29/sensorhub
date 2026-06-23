@@ -18,6 +18,25 @@ const (
 	WiFiConnectionName = "wifi-home"
 )
 
+// Configuration
+const (
+	listenAddr     = ":8080"
+	refreshSeconds = 5
+	nmcliTimeout   = 5 * time.Second
+)
+
+type Network struct {
+	SSID     string
+	SIGNAL   string
+	SECURITY string
+}
+
+type SSIDPageData struct {
+	Refresh  int
+	Networks []Network
+	Error    string
+}
+
 // HTML form template for the user configuration page
 const inputformHTML = `
 <!DOCTYPE html>
