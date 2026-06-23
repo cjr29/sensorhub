@@ -13,6 +13,8 @@ import (
 var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
 var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
 
+// var loginTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/login.html"))
+
 func configureViaHotspot() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/page1", listHandler)
@@ -41,10 +43,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	render(w, "page2.html", map[string]any{
-		"Title": "Login to WiFi Network",
-		"Body":  "Enter login information for selected WiFi network.",
-	})
+	// render(w, "page2.html", map[string]any{
+	// 	"Title": "Login to WiFi Network",
+	// 	"Body":  "Enter login information for selected WiFi network.",
+	// })
 	setupViaHotspot()
 }
 
