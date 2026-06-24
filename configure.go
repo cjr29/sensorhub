@@ -2,18 +2,30 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
 
+const (
+	pathToHubConfig = "/var/sensorhub/sensorhub.conf"
+)
+
+type WiFi struct {
+	SSID string `json:"ssid"`
+	PWD  string `json:"pwd"`
+}
+
 var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
 var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
 
 // var loginTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/login.html"))
+var currentWiFi = WiFi{}
 
 func configureViaHotspot() {
 	http.HandleFunc("/", indexHandler)
@@ -118,4 +130,63 @@ func parseNmcliScan(raw string) []Network {
 		})
 	}
 	return nets
+}
+
+func (w *WiFi) saveSSIDPWD() error {
+	// Write the SSID and PWD from struct w to the config file for persistence
+	// Overwrites any existing content, which is fine since we only need to store the current SSID:PWD
+	// Creates the file if it doesn't exist, or truncates it if it does. Permissions are set to 0644 (read/write for owner, read for group and others).
+	_, err := os.Stat(pathToHubConfig)
+	if os.IsNotExist(err) {
+		f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
+		if err != nil {
+			logger.Error("Unable to create configuration file. Halting program.")
+			return err
+		}
+		_ = f.Close()
+	}
+	// Convert to JSON
+	jsonData, err := json.Marshal(w)
+	if err != nil {
+		logger.Error("Unable to convert SSID and password to JSON")
+		return err
+	}
+	// Write JSON to file
+	err = os.WriteFile(pathToHubConfig, jsonData, 0644)
+	if err != nil {
+		logger.Error("Unable to write SSID:PWD to config file")
+		return err
+	}
+	// Successful write
+	return nil
+}
+
+func (w *WiFi) getSSIDPWD() error {
+	// Read JSON from file
+	jsonData, err := os.ReadFile("message.json")
+	if err != nil {
+		logger.Error("Unable to read the configuration file")
+		return err
+	}
+	// Convert JSON to struct
+	err = json.Unmarshal(jsonData, w)
+	if err != nil {
+		logger.Error("Unable to convert JSON to WiFi struct")
+		return err
+	}
+	// Successful. SSID and PWD are in the WiFi struct w
+	return nil
+}
+
+// Check for existence of configuration file
+// Check if the device is already configured to connect to a Wi-Fi network
+// We use a json file to hold the SSID:PWD of the currently configured network. If it exists, we assume we're configured.
+// Filename is /var/sensorhub/sensorhub.conf and contains the SSID and password of the currently configured network.
+// If the file doesn't exist, we assume we're not configured.
+func isConfigFile() bool {
+	_, err := os.Stat(pathToHubConfig)
+	if err == nil {
+		return true // File exists
+	}
+	return false // No config file, return false
 }

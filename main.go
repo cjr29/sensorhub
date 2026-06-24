@@ -5,117 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"os/signal"
-	"strings"
-	"sync"
 	"syscall"
 )
-
-const (
-	Logging  = true            // Always on for logging. Set level with LogLevel property
-	LogLevel = slog.LevelDebug // Change to Error for production
-)
-
-const (
-	logDir  = "/var/log/sensorhub"
-	logFile = "/var/log/sensorhub/sensorhub.log"
-)
-
-const (
-	serverPort      = ":80"
-	pathToHubConfig = "/var/sensorhub/sensorhub.conf"
-)
-
-type fileHandler struct {
-	mu   sync.RWMutex
-	file *os.File
-	h    slog.Handler
-}
-
-func newFileHandler(path string) (*fileHandler, error) {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return nil, err
-	}
-	h := slog.NewTextHandler(f, &slog.HandlerOptions{
-		Level:       LogLevel,
-		AddSource:   false,
-		ReplaceAttr: nil,
-	})
-	return &fileHandler{file: f, h: h}, nil
-}
-
-func (fh *fileHandler) Handle(ctx context.Context, r slog.Record) error {
-	formattedTime := r.Time.Format("2006/01/02 15:04:05")
-	//add time and message to values
-	strs := []string{formattedTime, r.Message, "\n"}
-	if r.NumAttrs() != 0 {
-		r.Attrs(func(a slog.Attr) bool {
-			strs = append(strs, a.Value.String())
-			return true
-		})
-	}
-	result := strings.Join(strs, " ")
-	b := []byte(result)
-
-	fh.mu.Lock()
-	defer fh.mu.Unlock()
-
-	_, err := fh.file.Write(b)
-
-	return err
-}
-
-func (fh *fileHandler) Enabled(ctx context.Context, l slog.Level) bool {
-	fh.mu.RLock()
-	defer fh.mu.RUnlock()
-	return fh.h.Enabled(ctx, l)
-}
-
-func (fh *fileHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	fh.mu.RLock()
-	h := fh.h.WithAttrs(attrs)
-	fh.mu.RUnlock()
-	return &fileHandler{file: fh.file, h: h}
-}
-
-func (fh *fileHandler) WithGroup(name string) slog.Handler {
-	fh.mu.RLock()
-	h := fh.h.WithGroup(name)
-	fh.mu.RUnlock()
-	return &fileHandler{file: fh.file, h: h}
-}
-
-// Reopen closes the current file and opens a new one at the same path, swapping the handler.
-func (fh *fileHandler) Reopen(path string) error {
-	newf, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	newh := slog.NewTextHandler(newf, &slog.HandlerOptions{
-		Level:       LogLevel,
-		AddSource:   false,
-		ReplaceAttr: nil,
-	})
-
-	fh.mu.Lock()
-	oldf := fh.file
-	fh.file = newf
-	fh.h = newh
-	fh.mu.Unlock()
-
-	if oldf != nil {
-		_ = oldf.Close()
-	}
-	return nil
-}
-
-func ensureLogDir() error {
-	return os.MkdirAll(logDir, 0o755)
-}
-
-var logger *slog.Logger
 
 func main() {
 
@@ -160,19 +52,20 @@ func main() {
 	}()
 
 	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
-	if configured() {
-		ssid := getSSID()
-		logger.Info(fmt.Sprintf("Already configured to connect to Wi-Fi SSID:%s. Now test connection.", ssid))
-		if isConnected() {
-			logger.Info("WiFi working.")
+	if isConfigFile() {
+		if err := currentWiFi.getSSIDPWD(); err == nil {
+			logger.Info(fmt.Sprintf("Already configured to connect to Wi-Fi SSID:%s. Now test connection.", currentWiFi.SSID))
+			if isConnected() {
+				logger.Info(fmt.Sprintf("WiFi on and connected to %s.", currentWiFi.SSID))
+			} else {
+				logger.Info(fmt.Sprintf("Configured Wi-Fi network %s not currently reachable. Starting hotspot configuration.", currentWiFi.SSID))
+				configureViaHotspot()
+			}
 		} else {
-			logger.Info(fmt.Sprintf("Configured Wi-Fi network %s not currently reachable. Starting hotspot configuration.", ssid))
+			logger.Info("WiFi has not been configured. Starting hotspot configuration.")
 			configureViaHotspot()
+			logger.Info(fmt.Sprintf("WiFi has been connected to %s", currentWiFi.SSID))
 		}
-	} else {
-		logger.Info("WiFi has not been configured. Starting hotspot configuration.")
-		configureViaHotspot()
-		logger.Info(fmt.Sprintf("WiFi has been conected to %s", getSSID()))
 	}
 
 	// Start the background processing threads now that we are connected to WiFi
@@ -286,50 +179,3 @@ func main() {
 
 // 	logAll.Info(fmt.Sprintln("Setup hotspot is online again. Awaiting user retry."))
 // }
-
-func isConnected() bool {
-	// Quick check to see if the device can route packets to the internet
-	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
-	err := cmd.Run()
-	return err == nil
-}
-
-/************************************************************************************/
-/**** Reactivate these functions once debugging is done *****************************/
-func configured() bool {
-	// Check if the device is already configured to connect to a Wi-Fi network
-	// We use a text file to hold the SSID of the currently configured network. If it exists, we assume we're configured.
-	// Filename is /var/sensorhub/sensorhub.config and contains the SSID of the currently configured network.
-	// If the file doesn't exist, we assume we're not configured.
-	_, err := os.Stat(pathToHubConfig)
-	if err == nil {
-		ssid := getSSID()
-		if ssid != "" {
-			return true // file exists
-		} else {
-			return false
-		}
-	}
-	return false // No config file or not configured, return false
-}
-
-func saveSSID(ssid string, path string) error {
-	// Write the SSID to the config file for persistence
-	// Overwrites any existing content, which is fine since we only need to store the current SSID
-	// Creates the file if it doesn't exist, or truncates it if it does. Permissions are set to 0644 (read/write for owner, read for group and others).
-	_, err := os.Stat(pathToHubConfig)
-	if os.IsNotExist(err) {
-		f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
-		_ = f.Close()
-		return err // file created
-	}
-	return os.WriteFile(path, []byte(ssid), 0644)
-}
-
-func getSSID() string {
-	data, err := os.ReadFile(pathToHubConfig)
-	if err != nil {
-		panic(err)
-	}
-	return string(data)
-}

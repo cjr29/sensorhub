@@ -76,9 +76,10 @@ func setupViaHotspot() {
 
 	// Wait until the user sends credentials via the captive portal web interface
 	creds := <-credChan
-	targetSSID, targetPass := creds[0], creds[1]
+	currentWiFi.SSID = creds[0]
+	currentWiFi.PWD = creds[1]
 
-	logger.Info(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", targetSSID))
+	logger.Info(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", currentWiFi.SSID))
 
 	// Gracefully shut down server so the HTTP response finishes flushing to the browser
 	_ = server.Shutdown(context.Background())
@@ -86,8 +87,8 @@ func setupViaHotspot() {
 	logger.Info("🛑 Stopping hotspot...")
 	_ = stopHotspot()
 
-	logger.Info(fmt.Sprintf("⚡ Connecting to network '%s'...", targetSSID))
-	if err := connectToWiFi(targetSSID, targetPass); err != nil {
+	logger.Info(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
+	if err := connectToWiFi(); err != nil {
 		logger.Error(fmt.Sprintf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err))
 		// Option: Call main() again or loop to safely recover the hotspot state
 		return
@@ -95,7 +96,7 @@ func setupViaHotspot() {
 
 	// Write out the SSID to the persistent config file
 
-	logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", targetSSID))
+	logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
 }
 
 // Check for live connectivity by pinging an public DNS server
@@ -129,20 +130,43 @@ func stopHotspot() error {
 }
 
 // Commands NetworkManager to join the user-specified network
-func connectToWiFi(ssid, password string) error {
+func connectToWiFi() error {
 	var cmd *exec.Cmd
-	// Remove old wifi connection
-	cmd = exec.Command("sudo", "nmcli", "connection", "delete", "wifi-home")
-	logger.Info(fmt.Sprintf("Attempting to connect to SSID: %s", ssid))
-	cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
-
+	// Remove old wifi profile and connection
+	logger.Info("Removing previous WiFi connection if it exists.")
+	cmd = exec.Command("sudo", "nmcli", "connection", "down", WiFiConnectionName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
 
+	cmd = exec.Command("sudo", "nmcli", "connection", "delete", WiFiConnectionName)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, string(output))
+	}
+
+	logger.Info(fmt.Sprintf("Adding new WiFi connection profile for %s", WiFiConnectionName))
+	cmd = exec.Command("sudo", "nmcli", "connection", "add", "type", "wifi",
+		"ifname", "wlan0", "con-name", WiFiConnectionName, "ssid", currentWiFi.SSID, "password", currentWiFi.PWD)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, string(output))
+	}
+
+	cmd = exec.Command("sudo", "nmcli", "connection", "up", WiFiConnectionName)
+	// cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, string(output))
+	}
+
 	// Connected to WiFi, save SSID for future reboots
-	saveSSID(ssid, pathToHubConfig)
+	if err := currentWiFi.saveSSIDPWD(); err == nil {
+		logger.Info(fmt.Sprintf("WiFi is connected to %s", currentWiFi.SSID))
+	} else {
+		logger.Error(fmt.Sprintf("Unable to save SSID and password to config file. Error: %s", err))
+	}
 	return nil
 }
 
@@ -183,13 +207,9 @@ func startWebServer(credChan chan [2]string) *http.Server {
 	return server
 }
 
-// func getAvailableNetworks() ([]byte, error) {
-// 	// Request NetworkManager to connect to target network
-// 	// nmcli automatically handles turning off the current AP when joining a client network
-// 	cmd := exec.Command("nmcli", "device", "wifi", "list")
-// 	output, err := cmd.CombinedOutput()
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to list Wi-Fi networks: %w", err)
-// 	}
-// 	return output, nil
-// }
+func isConnected() bool {
+	// Quick check to see if the device can route packets to the internet
+	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
+	err := cmd.Run()
+	return err == nil
+}
