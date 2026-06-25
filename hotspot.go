@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -88,7 +87,7 @@ func loginWifiViaHotspot() {
 	// Gracefully shut down server so the HTTP response finishes flushing to the browser
 	_ = server.Shutdown(context.Background())
 
-	logger.Info("🛑 Stopping hotspot...")
+	logger.Info("Stopping hotspot...")
 	_ = stopHotspot()
 
 	logger.Info(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
@@ -102,20 +101,29 @@ func loginWifiViaHotspot() {
 
 // Configures and enables the Pi's native hotspot using nmcli
 func startHotspot() error {
-	// If hotspot connection exists, stop it first
 	exists, err := connectionExists(context.Background(), HotspotConnName)
 	if err != nil {
-		logger.Error("Failed checking SensorHub hotspot connection status")
-		os.Exit(0)
+		logger.Debug("SensorHubHotspot not active")
+		panic(err)
 	}
 	if exists {
-		// Connection profile already exist, bring it down
-		err = stopHotspot()
+		// If exists, check if active and if it is , stop it
+		active, err := connectionActive(context.Background(), HotspotConnName)
 		if err != nil {
-			logger.Error(" Unable to stop and delete local hotspot")
-			return err
+			logger.Debug("SensorHubHotspot not active")
+			panic(err)
 		}
-		return nil
+		if active {
+			// Connection is active, bring it down
+			err = stopHotspot()
+			if err != nil {
+				logger.Error(" Unable to stop hotspot")
+				return err
+			}
+		} else {
+			// Exists, but not active, done
+			return nil
+		}
 	} else {
 		// Create the new hotspot network profile
 		// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
@@ -218,6 +226,56 @@ func connectionExists(ctx context.Context, connName string) (bool, error) {
 			return true, nil
 		}
 	}
+	return false, nil
+}
+
+// ConnectionActive checks whether a given NetworkManager connection exists and is active.
+// It returns (true, nil) if the connection is active, otherwise (false, nil).
+func connectionActive(ctx context.Context, connName string) (bool, error) {
+	if strings.TrimSpace(connName) == "" {
+		return false, fmt.Errorf("connName is empty")
+	}
+
+	// Check connection exists:
+	// nmcli -t -f NAME con show
+	existsCmd := exec.CommandContext(ctx, "nmcli", "-t", "-f", "NAME", "con", "show")
+	var existsOut bytes.Buffer
+	existsCmd.Stdout = &existsOut
+	existsCmd.Stderr = &existsOut
+	if err := existsCmd.Run(); err != nil {
+		return false, fmt.Errorf("nmcli con show failed: %w (%s)", err, strings.TrimSpace(existsOut.String()))
+	}
+
+	found := false
+	for _, line := range strings.Split(existsOut.String(), "\n") {
+		if strings.TrimSpace(line) == connName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return false, nil // not existing -> not active
+	}
+
+	// Check if that specific connection is active:
+	// nmcli -t -f NAME,TYPE,DEVICE con show --active
+	activeCmd := exec.CommandContext(ctx, "nmcli", "-t", "-f", "NAME,TYPE,DEVICE", "con", "show", "--active")
+	var activeOut bytes.Buffer
+	activeCmd.Stdout = &activeOut
+	activeCmd.Stderr = &activeOut
+	if err := activeCmd.Run(); err != nil {
+		return false, fmt.Errorf("nmcli con show --active failed: %w (%s)", err, strings.TrimSpace(activeOut.String()))
+	}
+
+	for _, line := range strings.Split(activeOut.String(), "\n") {
+		// -t produces colon-separated fields by default: NAME:TYPE:DEVICE
+		// Name is the first field.
+		fields := strings.SplitN(line, ":", 2)
+		if len(fields) > 0 && fields[0] == connName {
+			return true, nil
+		}
+	}
+
 	return false, nil
 }
 
