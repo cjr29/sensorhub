@@ -12,6 +12,39 @@ func main() {
 
 	configureLogging()
 
+	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
+	logger.Debug("Check if Sensor Hub config file exists")
+	if isConfigFile() {
+		logger.Debug("Config file exists, check if it has an SSID and PWD")
+		if err := currentWiFi.getSSIDPWD(); err == nil {
+			logger.Info(fmt.Sprintf("Already configured to connect to Wi-Fi SSID:%s. Now test connection.", currentWiFi.SSID))
+			if hasInternet() {
+				logger.Info(fmt.Sprintf("WiFi verified on and connected to %s.", currentWiFi.SSID))
+			} else {
+				logger.Info(fmt.Sprintf("Configured Wi-Fi network %s not currently reachable. Starting hotspot configuration.", currentWiFi.SSID))
+				logger.Debug("Calling configureViaHotspot()")
+				// Start local Web server on :8080 to take commands from client
+				// index, list available SSIDs, logon to SSID
+				configureViaHotspot()
+				logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
+			}
+		} else {
+			logger.Info("WiFi has not been configured. Starting hotspot configuration.")
+			logger.Debug("Calling configureViaHotspot()")
+			configureViaHotspot()
+			logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
+		}
+	} else {
+		// SSID not configured
+		logger.Debug("Sensor Hub config file does not exist, call configureViaHotSpot()")
+		configureViaHotspot()
+		logger.Debug(fmt.Sprintf("Returned from configureViaHotspot. WiFi connected to %s", currentWiFi.SSID))
+	}
+	logger.Debug("WiFi and Internet access verified")
+
+	/************************************************************************************/
+	/********  WiFi Configured, proceed with processing *********************************/
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	logger.Debug("Retrieved program context to handle signals")
@@ -42,34 +75,6 @@ func main() {
 	}()
 	logger.Debug("Activated go function to watch for system signals")
 
-	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
-	logger.Debug("Check if Sensor Hub config file exists")
-	if isConfigFile() {
-		logger.Debug("Config file exists, check if it has an SSID and PWD")
-		if err := currentWiFi.getSSIDPWD(); err == nil {
-			logger.Info(fmt.Sprintf("Already configured to connect to Wi-Fi SSID:%s. Now test connection.", currentWiFi.SSID))
-			if hasInternet() {
-				logger.Info(fmt.Sprintf("WiFi verified on and connected to %s.", currentWiFi.SSID))
-			} else {
-				logger.Info(fmt.Sprintf("Configured Wi-Fi network %s not currently reachable. Starting hotspot configuration.", currentWiFi.SSID))
-				logger.Debug("Calling configureViaHotspot()")
-				// Start local Web server on :8080 to take commands from client
-				// index, list available SSIDs, logon to SSID
-				configureViaHotspot()
-				logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
-			}
-		} else {
-			logger.Info("WiFi has not been configured. Starting hotspot configuration.")
-			logger.Debug("Calling configureViaHotspot()")
-			configureViaHotspot()
-			logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
-		}
-	} else {
-		// SSID not configured
-		configureViaHotspot()
-		logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
-	}
-	logger.Debug("WiFi and Internet access verified")
 	logger.Debug("Starting background processes")
 
 	// Start the background processing threads now that we are connected to WiFi

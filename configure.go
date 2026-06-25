@@ -33,10 +33,10 @@ func configureViaHotspot() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/page1", listHandler)
 	http.HandleFunc("/page2", loginHandler)
-
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("/usr/local/bin/sensorhub/static"))))
 
-	logger.Info(fmt.Sprintf("Sensor Hub HTTP server starting on port %s for WiFi configuration.", listenAddr))
+	logger.Debug("Entered configureViaHotspot")
+	logger.Debug("Calling startHotspot()")
 	if err := startHotspot(); err != nil {
 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 		// Generate signal to stop Sensor Hub

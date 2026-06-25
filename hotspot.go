@@ -106,7 +106,7 @@ func startHotspot() error {
 		return err
 	}
 	// 2. Create the new hotspot network profile
-	createCmd := exec.Command("nmcli", "device", "wifi", "hotspot",
+	createCmd := exec.Command("nmcli", "device", "wifi", "Hotspot",
 		"ssid", HotspotSSID,
 		"password", HotspotPass,
 		"ifname", "wlan0",
