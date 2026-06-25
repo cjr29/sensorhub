@@ -121,12 +121,10 @@ func startHotspot() error {
 	return nil
 }
 
-// Shuts down and deletes the temporary hotspot network
+// Shuts down the temporary hotspot network
 func stopHotspot() error {
 	logger.Debug(fmt.Sprintf("Shut down hotspot with connection name %s", HotspotConnName))
-	_ = exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
-	logger.Debug(fmt.Sprintf("Deleting hotspot with connection name %s", HotspotConnName))
-	return exec.Command("sudo", "nmcli", "connection", "delete", HotspotConnName).Run()
+	return exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
 }
 
 // Commands NetworkManager to join the user-specified network
