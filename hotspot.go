@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	HotspotName        = "Hotspot" // The nmcli profile name for your Pi setup AP
-	HotspotSSID        = "SensorHub"
-	HotspotPass        = "ConfigureMe123" // Minimum 8 characters
-	WiFiConnectionName = "wifi-home"
+	HotspotConnName = "SensorHubHotspot" // The nmcli profile name for your Pi setup AP
+	HotspotSSID     = "SensorHub"
+	HotspotPass     = "ConfigureMe123" // Minimum 8 characters
+	WiFiConnName    = "wifi-home"
+	// sudo nmcli device wifi hotspot ifname wlan0 con-name "SensorHubHotspot" ssid SensorHub password ConfigureMe123
 )
 
 // Configuration
@@ -106,14 +107,15 @@ func startHotspot() error {
 		return err
 	}
 	// 2. Create the new hotspot network profile
-	createCmd := exec.Command("nmcli", "device", "wifi", "Hotspot",
+	// sudo nmcli device wifi hotspot ifname wlan0 con-name "SensorHubHotspot" ssid SensorHub password ConfigureMe123
+	createCmd := exec.Command("sudo", "nmcli", "device", "wifi", "hotspot",
+		"ifname", "wlan0",
+		"con-name", HotspotConnName,
 		"ssid", HotspotSSID,
 		"password", HotspotPass,
-		"ifname", "wlan0",
-		"con-name", HotspotName,
 	)
 	if err := createCmd.Run(); err != nil {
-		logger.Debug(fmt.Sprintf("Failed to create new hotspot with connection name %s", HotspotName))
+		logger.Debug(fmt.Sprintf("Failed to create new hotspot with connection name %s", HotspotConnName))
 		return fmt.Errorf("nmcli hotspot creation failed: %w", err)
 	}
 	return nil
@@ -121,40 +123,46 @@ func startHotspot() error {
 
 // Shuts down and deletes the temporary hotspot network
 func stopHotspot() error {
-	logger.Debug(fmt.Sprintf("Shut down hotspot with connection name %s", HotspotName))
-	_ = exec.Command("nmcli", "connection", "down", HotspotName).Run()
-	logger.Debug(fmt.Sprintf("Deleting hotspot with connection name %s", HotspotName))
-	return exec.Command("nmcli", "connection", "delete", HotspotName).Run()
+	logger.Debug(fmt.Sprintf("Shut down hotspot with connection name %s", HotspotConnName))
+	_ = exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
+	logger.Debug(fmt.Sprintf("Deleting hotspot with connection name %s", HotspotConnName))
+	return exec.Command("sudo", "nmcli", "connection", "delete", HotspotConnName).Run()
 }
 
 // Commands NetworkManager to join the user-specified network
 func connectToWiFi() error {
 	var cmd *exec.Cmd
 	// Remove old wifi profile and connection
-	logger.Debug(fmt.Sprintf("Shutting down previous WiFi connection %s if it exists.", WiFiConnectionName))
-	cmd = exec.Command("sudo", "nmcli", "connection", "down", WiFiConnectionName)
+	logger.Debug(fmt.Sprintf("Shutting down previous WiFi connection %s if it exists.", WiFiConnName))
+	cmd = exec.Command("sudo", "nmcli", "connection", "down", WiFiConnName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
-
-	logger.Debug(fmt.Sprintf("Deleting previous WiFi connection %s if it exists.", WiFiConnectionName))
-	cmd = exec.Command("sudo", "nmcli", "connection", "delete", WiFiConnectionName)
+	logger.Debug(fmt.Sprintf("Deleting previous WiFi connection %s if it exists.", WiFiConnName))
+	cmd = exec.Command("sudo", "nmcli", "connection", "delete", WiFiConnName)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, string(output))
+	}
+	// sudo nmcli device wifi hotspot ifname wlan0 con-name "wifi-home" ssid <SSID> password <password>
+	// sudo nmcli connection add type wifi con-name HomeWiFi ifname wlan0 ssid MyNetwork wifi-sec.key-mgmt wpa-psk wifi-sec.psk mysecretpassword
+	logger.Debug(fmt.Sprintf("Adding new WiFi connection profile for %s", WiFiConnName))
+	cmd = exec.Command("sudo", "nmcli", "connection", "add",
+		"type", "wifi",
+		"con-name", WiFiConnName,
+		"ifname", "wlan0",
+		"ssid", currentWiFi.SSID,
+		"wifi-sec.key-mgmt", "wpa-psk",
+		"wifi-sec.psk", currentWiFi.PWD,
+	)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
 
-	logger.Debug(fmt.Sprintf("Adding new WiFi connection profile for %s", WiFiConnectionName))
-	cmd = exec.Command("sudo", "nmcli", "connection", "add", "type", "wifi",
-		"ifname", "wlan0", "con-name", WiFiConnectionName, "ssid", currentWiFi.SSID, "password", currentWiFi.PWD)
-	output, err = cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%v: %s", err, string(output))
-	}
-
-	logger.Debug(fmt.Sprintf("Bring up WiFi connection %s", WiFiConnectionName))
-	cmd = exec.Command("sudo", "nmcli", "connection", "up", WiFiConnectionName)
+	logger.Debug(fmt.Sprintf("Bring up WiFi connection %s", WiFiConnName))
+	cmd = exec.Command("sudo", "nmcli", "connection", "up", WiFiConnName)
 	// cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
