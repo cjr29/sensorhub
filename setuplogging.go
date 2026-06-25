@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -15,16 +16,28 @@ const (
 	logFile  = "/var/log/sensorhub/sensorhub.log"
 )
 
-var (
-	logger      *slog.Logger
-	currentSSID string
-	currentPWD  string
-)
+var logger *slog.Logger
+var logFh *fileHandler
 
 type fileHandler struct {
 	mu   sync.RWMutex
 	file *os.File
 	h    slog.Handler
+}
+
+func configureLogging() {
+	var err error
+	if err = ensureLogDir(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create log dir: %v\n", err)
+		os.Exit(1)
+	}
+	logFh, err = newFileHandler(logFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open log file: %v\n", err)
+		os.Exit(1)
+	}
+	logger = slog.New(logFh)
+	logger.Info(fmt.Sprintf("Logging configured for %s.", LogLevel.String()))
 }
 
 func ensureLogDir() error {

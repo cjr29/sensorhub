@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -35,6 +37,11 @@ func configureViaHotspot() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("/usr/local/bin/sensorhub/static"))))
 
 	logger.Info(fmt.Sprintf("Sensor Hub HTTP server starting on port %s for WiFi configuration.", listenAddr))
+	if err := startHotspot(); err != nil {
+		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
+		// Generate signal to stop Sensor Hub
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+	}
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		logger.Error(err.Error())
 	}
@@ -59,7 +66,30 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	// 	"Title": "Login to WiFi Network",
 	// 	"Body":  "Enter login information for selected WiFi network.",
 	// })
-	setupViaHotspot()
+	// Create a channel to catch the WiFi login credentials once submitted
+	credChan := make(chan [2]string)
+	server := startWebServer(credChan)
+
+	// Wait until the user sends credentials via the captive portal web interface
+	creds := <-credChan
+	currentWiFi.SSID = creds[0]
+	currentWiFi.PWD = creds[1]
+
+	logger.Info(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", currentWiFi.SSID))
+
+	// Gracefully shut down server so the HTTP response finishes flushing to the browser
+	_ = server.Shutdown(context.Background())
+
+	logger.Info("🛑 Stopping hotspot...")
+	_ = stopHotspot()
+
+	logger.Info(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
+	if err := connectToWiFi(); err != nil {
+		logger.Error(fmt.Sprintf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err))
+		// Option: Call main() again or loop to safely recover the hotspot state
+		return
+	}
+	logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
 }
 
 func listHandler(w http.ResponseWriter, r *http.Request) {

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,25 +10,16 @@ import (
 
 func main() {
 
-	// logger = ConfigureLogging(LogLevel, Logging)
-	if err := ensureLogDir(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create log dir: %v\n", err)
-		os.Exit(1)
-	}
-	fh, err := newFileHandler(logFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open log file: %v\n", err)
-		os.Exit(1)
-	}
-	logger = slog.New(fh)
-	logger.Info(fmt.Sprintf("Logging configured for %s.", LogLevel.String()))
+	configureLogging()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	logger.Debug("Retrieved program context to handle signals")
 
 	// signals: SIGINT/SIGTERM -> shutdown, SIGHUP -> reopen log
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	logger.Debug("Set up channel to catch shutdown signals")
 
 	// Watches for system signals in a separate goroutine so it doesn't block the main work loop
 	go func() {
@@ -37,8 +27,8 @@ func main() {
 			sig := <-sigCh
 			switch sig {
 			case syscall.SIGHUP:
-				// reopen logs for logrotate
-				if err := fh.Reopen(logFile); err != nil {
+				// reopen log file after logrotate signal received
+				if err := logFh.Reopen(logFile); err != nil {
 					logger.Error("Failed to reopen log file", "err", err)
 				} else {
 					logger.Info("Reopened log file after SIGHUP")
@@ -50,23 +40,37 @@ func main() {
 			}
 		}
 	}()
+	logger.Debug("Activated go function to watch for system signals")
 
 	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
+	logger.Debug("Check if Sensor Hub config file exists")
 	if isConfigFile() {
+		logger.Debug("Config file exists, check if it has an SSID and PWD")
 		if err := currentWiFi.getSSIDPWD(); err == nil {
 			logger.Info(fmt.Sprintf("Already configured to connect to Wi-Fi SSID:%s. Now test connection.", currentWiFi.SSID))
-			if isConnected() {
-				logger.Info(fmt.Sprintf("WiFi on and connected to %s.", currentWiFi.SSID))
+			if hasInternet() {
+				logger.Info(fmt.Sprintf("WiFi verified on and connected to %s.", currentWiFi.SSID))
 			} else {
 				logger.Info(fmt.Sprintf("Configured Wi-Fi network %s not currently reachable. Starting hotspot configuration.", currentWiFi.SSID))
+				logger.Debug("Calling configureViaHotspot()")
+				// Start local Web server on :8080 to take commands from client
+				// index, list available SSIDs, logon to SSID
 				configureViaHotspot()
+				logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
 			}
 		} else {
 			logger.Info("WiFi has not been configured. Starting hotspot configuration.")
+			logger.Debug("Calling configureViaHotspot()")
 			configureViaHotspot()
-			logger.Info(fmt.Sprintf("WiFi has been connected to %s", currentWiFi.SSID))
+			logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
 		}
+	} else {
+		// SSID not configured
+		configureViaHotspot()
+		logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
 	}
+	logger.Debug("WiFi and Internet access verified")
+	logger.Debug("Starting background processes")
 
 	// Start the background processing threads now that we are connected to WiFi
 	go processSensorData(ctx)    // Background thread to process sensor data
@@ -78,7 +82,7 @@ func main() {
 
 	// Wait for cancellation and exit
 	<-ctx.Done()
-	logger.Info("service stopped")
+	logger.Info("Sensor Hub stopped")
 	os.Exit(0)
 }
 
