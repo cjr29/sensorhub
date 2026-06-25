@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -99,24 +102,33 @@ func loginWifiViaHotspot() {
 
 // Configures and enables the Pi's native hotspot using nmcli
 func startHotspot() error {
-	// 1. Stop and Delete previous config instance if leftover
-	//_ = exec.Command("nmcli", "connection", "delete", HotspotName).Run()
-	err := stopHotspot()
+	// If hotspot connection exists, stop it first
+	exists, err := connectionExists(context.Background(), HotspotConnName)
 	if err != nil {
-		logger.Error(" Unable to stop and delete local hotspot")
-		return err
+		logger.Error("Failed checking SensorHub hotspot connection status")
+		os.Exit(0)
 	}
-	// 2. Create the new hotspot network profile
-	// sudo nmcli device wifi hotspot ifname wlan0 con-name "SensorHubHotspot" ssid SensorHub password ConfigureMe123
-	createCmd := exec.Command("sudo", "nmcli", "device", "wifi", "hotspot",
-		"ifname", "wlan0",
-		"con-name", HotspotConnName,
-		"ssid", HotspotSSID,
-		"password", HotspotPass,
-	)
-	if err := createCmd.Run(); err != nil {
-		logger.Debug(fmt.Sprintf("Failed to create new hotspot with connection name %s", HotspotConnName))
-		return fmt.Errorf("nmcli hotspot creation failed: %w", err)
+	if exists {
+		// Connection profile already exist, bring it down
+		err = stopHotspot()
+		if err != nil {
+			logger.Error(" Unable to stop and delete local hotspot")
+			return err
+		}
+		return nil
+	} else {
+		// Create the new hotspot network profile
+		// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
+		createCmd := exec.Command("sudo", "nmcli", "device", "wifi", "hotspot",
+			"ifname", "wlan0",
+			"con-name", HotspotConnName,
+			"ssid", HotspotSSID,
+			"password", HotspotPass,
+		)
+		if err := createCmd.Run(); err != nil {
+			logger.Debug(fmt.Sprintf("Failed to create new hotspot with connection name %s", HotspotConnName))
+			return fmt.Errorf("nmcli hotspot creation failed: %w", err)
+		}
 	}
 	return nil
 }
@@ -158,7 +170,6 @@ func connectToWiFi() error {
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
-
 	logger.Debug(fmt.Sprintf("Bring up WiFi connection %s", WiFiConnName))
 	cmd = exec.Command("sudo", "nmcli", "connection", "up", WiFiConnName)
 	// cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
@@ -175,6 +186,39 @@ func connectToWiFi() error {
 		logger.Error(fmt.Sprintf("Unable to save SSID and password to config file. Error: %s", err))
 	}
 	return nil
+}
+
+func connectionExists(ctx context.Context, connName string) (bool, error) {
+	// Use nmcli in terse, script-friendly mode.
+	// -f NAME shows only connection names
+	// -t (terse) removes headers/formatting.
+	// nmcli will exit 0 even if no connections exist; we just check output.
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cctx, "nmcli",
+		"-t", "-f", "NAME", "connection", "show")
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		// If nmcli isn't installed or NetworkManager isn't available, surface error.
+		msg := strings.TrimSpace(stderr.String())
+		if msg != "" {
+			return false, fmt.Errorf("nmcli failed: %w (%s)", err, msg)
+		}
+		return false, fmt.Errorf("nmcli failed: %w", err)
+	}
+
+	target := strings.TrimSpace(connName)
+	for _, line := range strings.Split(out.String(), "\n") {
+		if strings.TrimSpace(line) == target {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Launches a temporary lightweight Go HTTP web server
