@@ -414,7 +414,7 @@ func (w *WiFi) saveSSIDPWD() error {
 
 func (w *WiFi) getSSIDPWD() error {
 	// Read JSON from file
-	jsonData, err := os.ReadFile("message.json")
+	jsonData, err := os.ReadFile(pathToHubConfig)
 	if err != nil {
 		logger.Error("Unable to read the configuration file")
 		return err
