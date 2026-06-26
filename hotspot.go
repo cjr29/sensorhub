@@ -39,30 +39,32 @@ type SSIDPageData struct {
 	Error    string
 }
 
+var currentWiFi = WiFi{}
+
 // HTML form template for connecting to SSID page
-const inputformHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Sensor Hub Wi-Fi Setup</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px auto; max-width: 400px; padding: 20px; }
-        input[type=text], input[type=password] { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; }
-        input[type=submit] { width: 100%; background-color: #4CAF50; color: white; padding: 14px; border: none; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <h1>Connect Sensor Hub to WiFi</h1>
-    <form action="/connect" method="POST">
-        <label>Wi-Fi Name (SSID):</label>
-        <input type="text" name="ssid" required>
-        <label>Password:</label>
-        <input type="password" name="password">
-        <input type="submit" value="Connect">
-    </form>
-</body>
-</html>`
+// const inputformHTML = `
+// <!DOCTYPE html>
+// <html>
+// <head>
+//     <title>Sensor Hub Wi-Fi Setup</title>
+//     <meta name="viewport" content="width=device-width, initial-scale=1">
+//     <style>
+//         body { font-family: Arial, sans-serif; margin: 40px auto; max-width: 400px; padding: 20px; }
+//         input[type=text], input[type=password] { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; }
+//         input[type=submit] { width: 100%; background-color: #4CAF50; color: white; padding: 14px; border: none; cursor: pointer; }
+//     </style>
+// </head>
+// <body>
+//     <h1>Connect Sensor Hub to WiFi</h1>
+//     <form action="/connect" method="POST">
+//         <label>Wi-Fi Name (SSID):</label>
+//         <input type="text" name="ssid" required>
+//         <label>Password:</label>
+//         <input type="password" name="password">
+//         <input type="submit" value="Connect">
+//     </form>
+// </body>
+// </html>`
 
 func loginWifiViaHotspot() {
 	logger.Debug("Entered loginWifiViaHotspot.")
@@ -77,23 +79,25 @@ func loginWifiViaHotspot() {
 	server := startWebServer(credChan)
 
 	// Wait until the user sends credentials via the captive portal web interface
+	logger.Debug("Waiting for user to enter SSID and password")
 	creds := <-credChan
 	currentWiFi.SSID = creds[0]
 	currentWiFi.PWD = creds[1]
 
-	logger.Debug(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", currentWiFi.SSID))
+	logger.Debug(fmt.Sprintf("Received credentials for SSID: %s. \n Shutting down web server to connect to WiFi.", currentWiFi.SSID))
 
 	// Gracefully shut down server so the HTTP response finishes flushing to the browser
 	_ = server.Shutdown(context.Background())
 
-	logger.Info("Stopping hotspot...")
+	logger.Debug("Stopping hotspot...")
 	_ = stopHotspot()
 
-	logger.Info(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
+	logger.Debug(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
 	if err := connectToWiFi(); err != nil {
 		logger.Error(fmt.Sprintf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err))
 		// Option: Call main() again or loop to safely recover the hotspot state
-		return
+		// Generate signal to stop Sensor Hub
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}
 	logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
 }
@@ -157,6 +161,7 @@ func connectToWiFi() error {
 	cmd = exec.Command("sudo", "nmcli", "connection", "down", WiFiConnName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		logger.Error("Failed to shutdown previous wifi connection.")
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
 	logger.Debug(fmt.Sprintf("Deleting previous WiFi connection %s if it exists.", WiFiConnName))

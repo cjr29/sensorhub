@@ -3,13 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"html/template"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -26,89 +23,88 @@ var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/te
 var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
 
 // var loginTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/login.html"))
-var currentWiFi = WiFi{}
 
-func configureViaHotspot() {
-	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/page1", listHandler)
-	http.HandleFunc("/page2", loginHandler)
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("/usr/local/bin/sensorhub/static"))))
+// func configureViaHotspot() {
+// 	http.HandleFunc("/", indexHandler)
+// 	http.HandleFunc("/page1", listHandler)
+// 	http.HandleFunc("/page2", loginHandler)
+// 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("/usr/local/bin/sensorhub/static"))))
 
-	logger.Debug("Entered configureViaHotspot")
-	logger.Debug("Calling startHotspot()")
-	if err := startHotspot(); err != nil {
-		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
-		// Generate signal to stop Sensor Hub
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-	}
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		logger.Error(err.Error())
-	}
-}
+// 	logger.Debug("Entered configureViaHotspot")
+// 	logger.Debug("Calling startHotspot()")
+// 	if err := startHotspot(); err != nil {
+// 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
+// 		// Generate signal to stop Sensor Hub
+// 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+// 	}
+// 	if err := http.ListenAndServe(":8080", nil); err != nil {
+// 		logger.Error(err.Error())
+// 	}
+// }
 
-func render(w http.ResponseWriter, name string, data any) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
-		logger.Error("template execute error", "error", err.Error())
-	}
-}
+// func render(w http.ResponseWriter, name string, data any) {
+// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+// 	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
+// 		http.Error(w, "template error", http.StatusInternalServerError)
+// 		logger.Error("template execute error", "error", err.Error())
+// 	}
+// }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	render(w, "index.html", map[string]any{
-		"Title": "Sensor Hub Setup",
-	})
-}
+// func indexHandler(w http.ResponseWriter, r *http.Request) {
+// 	render(w, "index.html", map[string]any{
+// 		"Title": "Sensor Hub Setup",
+// 	})
+// }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	render(w, "page2.html", map[string]any{
-		"Title": "Login to WiFi Network",
-		"Body":  "Enter login information for selected WiFi network.",
-	})
+// func loginHandler(w http.ResponseWriter, r *http.Request) {
+// 	render(w, "page2.html", map[string]any{
+// 		"Title": "Login to WiFi Network",
+// 		"Body":  "Enter login information for selected WiFi network.",
+// 	})
 
-	// Create a channel to catch the WiFi login credentials once submitted
-	// credChan := make(chan [2]string)
-	// server := startWebServer(credChan)
+// Create a channel to catch the WiFi login credentials once submitted
+// credChan := make(chan [2]string)
+// server := startWebServer(credChan)
 
-	// // Wait until the user sends credentials via the captive portal web interface
-	// creds := <-credChan
-	// currentWiFi.SSID = creds[0]
-	// currentWiFi.PWD = creds[1]
+// // Wait until the user sends credentials via the captive portal web interface
+// creds := <-credChan
+// currentWiFi.SSID = creds[0]
+// currentWiFi.PWD = creds[1]
 
-	// logger.Info(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", currentWiFi.SSID))
+// logger.Info(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", currentWiFi.SSID))
 
-	// // Gracefully shut down server so the HTTP response finishes flushing to the browser
-	// _ = server.Shutdown(context.Background())
+// // Gracefully shut down server so the HTTP response finishes flushing to the browser
+// _ = server.Shutdown(context.Background())
 
-	// logger.Info("🛑 Stopping hotspot...")
-	// _ = stopHotspot()
+// logger.Info("🛑 Stopping hotspot...")
+// _ = stopHotspot()
 
-	// logger.Info(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
-	// if err := connectToWiFi(); err != nil {
-	// 	logger.Error(fmt.Sprintf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err))
-	// 	// Option: Call main() again or loop to safely recover the hotspot state
-	// 	return
-	// }
-	// logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
-}
+// logger.Info(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
+// if err := connectToWiFi(); err != nil {
+// 	logger.Error(fmt.Sprintf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err))
+// 	// Option: Call main() again or loop to safely recover the hotspot state
+// 	return
+// }
+// logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
+// }
 
-func listHandler(w http.ResponseWriter, r *http.Request) {
-	data := SSIDPageData{Refresh: refreshSeconds}
+// func listHandler(w http.ResponseWriter, r *http.Request) {
+// 	data := SSIDPageData{Refresh: refreshSeconds}
 
-	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
-	// fields: SSID,SIGNAL,SECURITY, -p pretty, -t terse, -f fields
-	out, err := runNmcli("-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
-	if err != nil {
-		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
-		_ = pageTmpl.Execute(w, data)
-		return
-	}
+// 	// Use nmcli to list Wi-Fi networks in terse machine-friendly format
+// 	// fields: SSID,SIGNAL,SECURITY, -p pretty, -t terse, -f fields
+// 	out, err := runNmcli("-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
+// 	if err != nil {
+// 		data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
+// 		_ = pageTmpl.Execute(w, data)
+// 		return
+// 	}
 
-	data.Networks = parseNmcliScan(out)
-	if err := pageTmpl.Execute(w, data); err != nil {
-		http.Error(w, "template render error", http.StatusInternalServerError)
-	}
-}
+// 	data.Networks = parseNmcliScan(out)
+// 	if err := pageTmpl.Execute(w, data); err != nil {
+// 		http.Error(w, "template render error", http.StatusInternalServerError)
+// 	}
+// }
 
 // runNmcli runs nmcli command with timeout and returns stdout or an error.
 func runNmcli(args ...string) (string, error) {
