@@ -66,5 +66,13 @@
   {{else}}
     <p>No networks found.</p>
   {{end}}
+    <h1>Connect Sensor Hub to WiFi</h1>
+    <form action="/connect" method="POST">
+        <label>Wi-Fi Name (SSID):</label>
+        <input type="text" name="ssid" required>
+        <label>Password:</label>
+        <input type="password" name="password">
+        <input type="submit" value="Connect">
+    </form>
 </body>
 </html>
