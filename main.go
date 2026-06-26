@@ -60,11 +60,12 @@ func main() {
 	logger.Debug("Retrieved program context to handle signals")
 
 	// signals: SIGINT/SIGTERM -> shutdown, SIGHUP -> reopen log
+	logger.Debug("Set up channel to catch shutdown signals")
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	logger.Debug("Set up channel to catch shutdown signals")
 
 	// Watches for system signals in a separate goroutine so it doesn't block the main work loop
+	logger.Debug("Start go function to monitor signals.")
 	go func() {
 		for {
 			sig := <-sigCh

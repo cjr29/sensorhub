@@ -65,7 +65,7 @@ const inputformHTML = `
 </html>`
 
 func loginWifiViaHotspot() {
-	logger.Debug("Starting hotspot.")
+	logger.Debug("Entered loginWifiViaHotspot.")
 	if err := startHotspot(); err != nil {
 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 		// Generate signal to stop Sensor Hub
@@ -100,6 +100,7 @@ func loginWifiViaHotspot() {
 
 // Configures and enables the Pi's native hotspot using nmcli
 func startHotspot() error {
+	logger.Debug("Entered startHotspot")
 	exists, err := connectionExists(context.Background(), HotspotConnName)
 	if err != nil {
 		logger.Debug("SensorHubHotspot not active")
@@ -142,12 +143,14 @@ func startHotspot() error {
 
 // Shuts down the temporary hotspot network
 func stopHotspot() error {
+	logger.Debug("Entered stopHotspot")
 	logger.Debug(fmt.Sprintf("Shut down hotspot with connection name %s", HotspotConnName))
 	return exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
 }
 
 // Commands NetworkManager to join the user-specified network
 func connectToWiFi() error {
+	logger.Debug("Entered connectToWiFi")
 	var cmd *exec.Cmd
 	// Remove old wifi profile and connection
 	logger.Debug(fmt.Sprintf("Shutting down previous WiFi connection %s if it exists.", WiFiConnName))
@@ -280,6 +283,7 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 
 // Launches a temporary lightweight Go HTTP web server
 func startWebServer(credChan chan [2]string) *http.Server {
+	logger.Debug("Entered startWebServer")
 	mux := http.NewServeMux()
 	server := &http.Server{Addr: listenAddr, Handler: mux}
 
