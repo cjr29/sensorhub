@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -18,14 +21,18 @@ const (
 	HotspotPass     = "ConfigureMe123" // Minimum 8 characters
 	WiFiConnName    = "wifi-home"
 	// sudo nmcli device wifi hotspot ifname wlan0 con-name "SensorHubHotspot" ssid SensorHub password ConfigureMe123
-)
 
-// Configuration
-const (
 	listenAddr     = ":8080"
 	refreshSeconds = 120
 	nmcliTimeout   = 5 * time.Second
+
+	pathToHubConfig = "/var/sensorhub/sensorhub.conf"
 )
+
+type WiFi struct {
+	SSID string `json:"ssid"`
+	PWD  string `json:"pwd"`
+}
 
 type Network struct {
 	SSID     string
@@ -39,32 +46,10 @@ type SSIDPageData struct {
 	Error    string
 }
 
-var currentWiFi = WiFi{}
+var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
+var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
 
-// HTML form template for connecting to SSID page
-// const inputformHTML = `
-// <!DOCTYPE html>
-// <html>
-// <head>
-//     <title>Sensor Hub Wi-Fi Setup</title>
-//     <meta name="viewport" content="width=device-width, initial-scale=1">
-//     <style>
-//         body { font-family: Arial, sans-serif; margin: 40px auto; max-width: 400px; padding: 20px; }
-//         input[type=text], input[type=password] { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; }
-//         input[type=submit] { width: 100%; background-color: #4CAF50; color: white; padding: 14px; border: none; cursor: pointer; }
-//     </style>
-// </head>
-// <body>
-//     <h1>Connect Sensor Hub to WiFi</h1>
-//     <form action="/connect" method="POST">
-//         <label>Wi-Fi Name (SSID):</label>
-//         <input type="text" name="ssid" required>
-//         <label>Password:</label>
-//         <input type="password" name="password">
-//         <input type="submit" value="Connect">
-//     </form>
-// </body>
-// </html>`
+var currentWiFi = WiFi{}
 
 func loginWifiViaHotspot() {
 	logger.Debug("Entered loginWifiViaHotspot.")
@@ -148,7 +133,7 @@ func startHotspot() error {
 // Shuts down the temporary hotspot network
 func stopHotspot() error {
 	logger.Debug("Entered stopHotspot")
-	logger.Debug(fmt.Sprintf("Shut down hotspot with connection name %s", HotspotConnName))
+	logger.Debug(fmt.Sprintf("🛑 Shut down hotspot with connection name %s", HotspotConnName))
 	return exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
 }
 
@@ -161,7 +146,7 @@ func connectToWiFi() error {
 	cmd = exec.Command("sudo", "nmcli", "connection", "down", WiFiConnName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logger.Error("Failed to shutdown previous wifi connection.")
+		logger.Error("❌ Failed to shutdown previous wifi connection.")
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
 	logger.Debug(fmt.Sprintf("Deleting previous WiFi connection %s if it exists.", WiFiConnName))
@@ -198,7 +183,7 @@ func connectToWiFi() error {
 	if err := currentWiFi.saveSSIDPWD(); err == nil {
 		logger.Debug(fmt.Sprintf("WiFi SSID and PWD saved to %s", pathToHubConfig))
 	} else {
-		logger.Error(fmt.Sprintf("Unable to save SSID and password to config file. Error: %s", err))
+		logger.Error(fmt.Sprintf("❌ Unable to save SSID and password to config file. Error: %s", err))
 	}
 	return nil
 }
@@ -342,14 +327,117 @@ func startWebServer(credChan chan [2]string) *http.Server {
 
 // Check for live connectivity by pinging an public DNS server
 func hasInternet() bool {
-	// cmd := exec.Command("ping", "-c", "1", "8.8.8.8")
 	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
 	return cmd.Run() == nil
 }
 
-// func isConnected() bool {
-// 	// Quick check to see if the device can route packets to the internet
-// 	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
-// 	err := cmd.Run()
-// 	return err == nil
-// }
+// runNmcli runs nmcli command with timeout and returns stdout or an error.
+func runNmcli(args ...string) (string, error) {
+	cmd := exec.Command("nmcli", args...)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	done := make(chan error, 1)
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
+	go func() { done <- cmd.Wait() }()
+
+	select {
+	case err := <-done:
+		return out.String(), err
+	case <-time.After(nmcliTimeout):
+		_ = cmd.Process.Kill()
+		return "", contextError("nmcli timed out")
+	}
+}
+
+func contextError(msg string) error {
+	return &customError{msg}
+}
+
+type customError struct{ s string }
+
+func (e *customError) Error() string { return e.s }
+
+// parseNmcliScan parses nmcli --terse --fields ... output (colon separated)
+func parseNmcliScan(raw string) []Network {
+	lines := strings.Split(strings.TrimSpace(raw), "\n")
+	var nets []Network
+	for _, l := range lines {
+		if l == "" {
+			continue
+		}
+		parts := strings.Split(l, ":")
+		// normalize length
+		for len(parts) < 6 {
+			parts = append(parts, "")
+		}
+		nets = append(nets, Network{
+			SSID:     parts[0],
+			SIGNAL:   parts[1],
+			SECURITY: parts[2],
+		})
+	}
+	return nets
+}
+
+func (w *WiFi) saveSSIDPWD() error {
+	// Write the SSID and PWD from struct w to the config file for persistence
+	// Overwrites any existing content, which is fine since we only need to store the current SSID:PWD
+	// Creates the file if it doesn't exist, or truncates it if it does. Permissions are set to 0644 (read/write for owner, read for group and others).
+	_, err := os.Stat(pathToHubConfig)
+	if os.IsNotExist(err) {
+		f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
+		if err != nil {
+			logger.Error("Unable to create configuration file. Halting program.")
+			return err
+		}
+		_ = f.Close()
+	}
+	// Convert to JSON
+	jsonData, err := json.Marshal(w)
+	if err != nil {
+		logger.Error("Unable to convert SSID and password to JSON")
+		return err
+	}
+	// Write JSON to file
+	err = os.WriteFile(pathToHubConfig, jsonData, 0644)
+	if err != nil {
+		logger.Error("Unable to write SSID:PWD to config file")
+		return err
+	}
+	// Successful write
+	return nil
+}
+
+func (w *WiFi) getSSIDPWD() error {
+	// Read JSON from file
+	jsonData, err := os.ReadFile("message.json")
+	if err != nil {
+		logger.Error("Unable to read the configuration file")
+		return err
+	}
+	// Convert JSON to struct
+	err = json.Unmarshal(jsonData, w)
+	if err != nil {
+		logger.Error("Unable to convert JSON to WiFi struct")
+		return err
+	}
+	// Successful. SSID and PWD are in the WiFi struct w
+	return nil
+}
+
+// Check for existence of configuration file
+// Check if the device is already configured to connect to a Wi-Fi network
+// We use a json file to hold the SSID:PWD of the currently configured network. If it exists, we assume we're configured.
+// Filename is /var/sensorhub/sensorhub.conf and contains the SSID and password of the currently configured network.
+// If the file doesn't exist, we assume we're not configured.
+func isConfigFile() bool {
+	_, err := os.Stat(pathToHubConfig)
+	if err == nil {
+		return true // File exists
+	}
+	return false // No config file, return false
+}
