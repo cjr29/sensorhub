@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os/exec"
@@ -66,7 +65,7 @@ const inputformHTML = `
 </html>`
 
 func loginWifiViaHotspot() {
-	logger.Info("Starting Sensor Hub setup hotspot...")
+	logger.Debug("Starting hotspot.")
 	if err := startHotspot(); err != nil {
 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 		// Generate signal to stop Sensor Hub
@@ -82,7 +81,7 @@ func loginWifiViaHotspot() {
 	currentWiFi.SSID = creds[0]
 	currentWiFi.PWD = creds[1]
 
-	logger.Info(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", currentWiFi.SSID))
+	logger.Debug(fmt.Sprintf("📥 Received credentials for SSID: %s. Shutting down web server to connect to WiFi.", currentWiFi.SSID))
 
 	// Gracefully shut down server so the HTTP response finishes flushing to the browser
 	_ = server.Shutdown(context.Background())
@@ -125,7 +124,7 @@ func startHotspot() error {
 			return nil
 		}
 	} else {
-		// Create the new hotspot network profile
+		// Create the new hotspot network profile and start it
 		// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
 		createCmd := exec.Command("sudo", "nmcli", "device", "wifi", "hotspot",
 			"ifname", "wlan0",
@@ -282,11 +281,27 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 // Launches a temporary lightweight Go HTTP web server
 func startWebServer(credChan chan [2]string) *http.Server {
 	mux := http.NewServeMux()
-	server := &http.Server{Addr: ":8080", Handler: mux}
+	server := &http.Server{Addr: listenAddr, Handler: mux}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, _ := template.New("form").Parse(inputformHTML)
-		_ = tmpl.Execute(w, nil)
+		// tmpl, _ := template.New("form").Parse(inputformHTML)
+		// _ = tmpl.Execute(w, nil)
+		data := SSIDPageData{Refresh: refreshSeconds}
+
+		// Use nmcli to list Wi-Fi networks in terse machine-friendly format
+		// fields: SSID,SIGNAL,SECURITY, -p pretty, -t terse, -f fields
+		out, err := runNmcli("-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
+		if err != nil {
+			data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
+			_ = pageTmpl.Execute(w, data)
+			return
+		}
+
+		data.Networks = parseNmcliScan(out)
+		if err := pageTmpl.Execute(w, data); err != nil {
+			http.Error(w, "template render error", http.StatusInternalServerError)
+		}
+
 	})
 
 	mux.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {

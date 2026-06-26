@@ -25,7 +25,15 @@ func main() {
 				logger.Debug("Calling configureViaHotspot()")
 				// Start local Web server on :8080 to take commands from client
 				// index, list available SSIDs, logon to SSID
-				configureViaHotspot()
+
+				/*******************/
+				// configureViaHotspot()
+				/*******************/
+
+				/*******************/
+				loginWifiViaHotspot()
+				/*******************/
+
 				logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
 			}
 		} else {
