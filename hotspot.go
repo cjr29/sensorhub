@@ -23,7 +23,7 @@ const (
 // Configuration
 const (
 	listenAddr     = ":8080"
-	refreshSeconds = 5
+	refreshSeconds = 0
 	nmcliTimeout   = 5 * time.Second
 )
 
