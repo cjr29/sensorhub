@@ -39,13 +39,15 @@ func main() {
 		} else {
 			logger.Info("WiFi has not been configured. Starting hotspot configuration.")
 			logger.Debug("Calling configureViaHotspot()")
-			configureViaHotspot()
+			//configureViaHotspot()
+			loginWifiViaHotspot()
 			logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
 		}
 	} else {
 		// SSID not configured
 		logger.Debug("Sensor Hub config file does not exist, call configureViaHotSpot()")
-		configureViaHotspot()
+		// configureViaHotspot()
+		loginWifiViaHotspot()
 		logger.Debug(fmt.Sprintf("Returned from configureViaHotspot. WiFi connected to %s", currentWiFi.SSID))
 	}
 	logger.Debug("WiFi and Internet access verified")
