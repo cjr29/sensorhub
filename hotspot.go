@@ -72,11 +72,30 @@ func loginWifiViaHotspot() {
 	// Persist WiFi credentials
 	currentWiFi.saveSSIDPWD()
 
-	// Gracefully shut down server so the HTTP response finishes flushing to the browser
+	// Gracefully shut down web server so the HTTP response finishes flushing to the browser
 	_ = server.Shutdown(context.Background())
 
 	logger.Debug("Stopping hotspot.")
 	_ = stopHotspot()
+
+	// Use creditials just received to recreate a clean wifi-home connection profile
+	// Add the new connection profile before trying to bring it up
+	// sudo nmcli connection add type wifi con-name HomeWiFi ifname wlan0 ssid MyNetwork wifi-sec.key-mgmt wpa-psk wifi-sec.psk mysecretpassword
+	logger.Debug(fmt.Sprintf("Adding new WiFi connection profile for %s", WiFiConnName))
+	cmd := exec.Command("sudo", "nmcli", "connection", "add",
+		"type", "wifi",
+		"con-name", WiFiConnName,
+		"ifname", "wlan0",
+		"ssid", currentWiFi.SSID,
+		"wifi-sec.key-mgmt", "wpa-psk",
+		"wifi-sec.psk", currentWiFi.PWD,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Fatal error, quit program
+		logger.Error(fmt.Sprintf("Failed to create wifi connection profile: %s", output))
+		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+	}
 
 	logger.Debug(fmt.Sprintf("Connecting to WiFi network '%s'...", currentWiFi.SSID))
 	if err := connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD); err != nil {
@@ -237,21 +256,6 @@ func connectToWiFi(connectionName, ssid string, pwd string) error {
 		logger.Error("Failed to remove exiting wifi connection profile.")
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
-	// Add the new connection profile before trying to bring it up
-	// sudo nmcli connection add type wifi con-name HomeWiFi ifname wlan0 ssid MyNetwork wifi-sec.key-mgmt wpa-psk wifi-sec.psk mysecretpassword
-	logger.Debug(fmt.Sprintf("Adding new WiFi connection profile for %s", connectionName))
-	cmd = exec.Command("sudo", "nmcli", "connection", "add",
-		"type", "wifi",
-		"con-name", connectionName,
-		"ifname", "wlan0",
-		"ssid", ssid,
-		"wifi-sec.key-mgmt", "wpa-psk",
-		"wifi-sec.psk", pwd,
-	)
-	output, err = cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%v: %s", err, string(output))
-	}
 	logger.Debug(fmt.Sprintf("Bring up WiFi connection %s", connectionName))
 	cmd = exec.Command("sudo", "nmcli", "connection", "up", connectionName)
 	// cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
@@ -405,7 +409,7 @@ func startWebServer(credChan chan [2]string) *http.Server {
 
 		// Send credentials to the main block channel after a brief pause
 		go func() {
-			time.Sleep(2 * time.Second)
+			time.Sleep(5 * time.Second)
 			credChan <- [2]string{ssid, password}
 		}()
 	})
