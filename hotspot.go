@@ -46,7 +46,6 @@ type SSIDPageData struct {
 	Error    string
 }
 
-// var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
 var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
 
 var currentWiFi = WiFi{}
@@ -78,7 +77,7 @@ func loginWifiViaHotspot() {
 	_ = stopHotspot()
 
 	logger.Debug(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
-	if err := connectToWiFi(); err != nil {
+	if err := connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD); err != nil {
 		logger.Error(fmt.Sprintf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err))
 		// Option: Call main() again or loop to safely recover the hotspot state
 		// Generate signal to stop Sensor Hub
@@ -91,31 +90,35 @@ func loginWifiViaHotspot() {
 func startHotspot() error {
 	logger.Debug("Entered startHotspot")
 
-	// 1. First be sure to shut down any Wifi connection before starting the hotspot
-	active, err := isConnectionActive(WiFiConnName)
-	if active {
-		logger.Debug(fmt.Sprintf("%s wifi connection is active", WiFiConnName))
-		// WiFi needs to be down before we can run the hotspot
-		err = stopWifi()
-		if err != nil {
-			logger.Error("Failed to stop wifi. Cannot proceeed with setup")
-			panic(err)
+	// First be sure to shut down any Wifi connection before starting the hotspot
+	exists, err := connectionExists(context.Background(), WiFiConnName)
+	if exists {
+		logger.Debug(fmt.Sprintf("%s wifi profile exists, check if active.", WiFiConnName))
+		active, err := connectionActive(context.Background(), WiFiConnName)
+		if active {
+			logger.Debug(fmt.Sprintf("%s wifi connection is active", WiFiConnName))
+			// WiFi needs to be down before we can run the hotspot
+			err = stopWifi(WiFiConnName)
+			if err != nil {
+				logger.Error("Failed to stop wifi. Cannot proceeed with setup")
+				return (err)
+			}
+			logger.Debug(fmt.Sprintf("%s WiFi connection has been brought down.", WiFiConnName))
+		} else {
+			logger.Debug(fmt.Sprintf("%s wifi connection is not active", WiFiConnName))
 		}
-	} else {
-		logger.Debug(fmt.Sprintf("%s wifi connection is not active", WiFiConnName))
 	}
 
-	// 2. Be sure that the hotspot connection profile exists, create it does not exist
-	exists, err := profileExists(HotspotConnName)
+	// Be sure that the hotspot connection profile exists, create it if it does not exist
+	exists, err = connectionExists(context.Background(), HotspotConnName)
 	if err != nil {
 		return (err)
 	}
-	logger.Debug("SensorHubHotspot profile does not exist. Create it.")
 	if exists {
 		// If hotspot profile already exists, check if active and if it is , stop it
 		active, err := connectionActive(context.Background(), HotspotConnName)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed checking hotspot connection. ", err))
+			logger.Error(fmt.Sprintf("Failed checking hotspot connection. %s", err))
 			return (err)
 		}
 		if active {
@@ -127,6 +130,7 @@ func startHotspot() error {
 			return exec.Command("sudo", "nmcli", "connection", "up", HotspotConnName).Run()
 		}
 	} else {
+		logger.Debug("SensorHubHotspot profile does not exist. Create it.")
 		// Create the new hotspot network profile and start it
 		// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
 		createCmd := exec.Command("sudo", "nmcli", "device", "wifi", "hotspot",
@@ -139,31 +143,37 @@ func startHotspot() error {
 			logger.Debug(fmt.Sprintf("Failed to create new hotspot with connection name %s", HotspotConnName))
 			return fmt.Errorf("nmcli hotspot creation failed: %w", err)
 		}
+		// Bring hotspot up
+		err := exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed bringing up hotspot connection %s", HotspotConnName))
+		}
+		logger.Debug(fmt.Sprintf("Hotspot connection %s for SSID %s is up.", HotspotConnName, HotspotSSID))
 	}
 	return nil
 }
 
-// IsConnectionActive returns true if `name` is currently active in NetworkManager.
-func isConnectionActive(name string) (bool, error) {
-	// nmcli -t -f NAME,DEVICE connection show --active
-	// Output lines like: "MyVPN:eth0"
-	cmd := exec.Command("nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+// // IsConnectionActive returns true if `name` is currently active in NetworkManager.
+// func isConnectionActive(name string) (bool, error) {
+// 	// nmcli -t -f NAME,DEVICE connection show --active
+// 	// Output lines like: "MyVPN:eth0"
+// 	cmd := exec.Command("nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active")
+// 	var out bytes.Buffer
+// 	cmd.Stdout = &out
+// 	cmd.Stderr = &out
 
-	if err := cmd.Run(); err != nil {
-		return false, fmt.Errorf("nmcli failed: %v (%s)", err, strings.TrimSpace(out.String()))
-	}
+// 	if err := cmd.Run(); err != nil {
+// 		return false, fmt.Errorf("nmcli failed: %v (%s)", err, strings.TrimSpace(out.String()))
+// 	}
 
-	want := name + ":"
-	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
-		if strings.HasPrefix(line, want) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
+// 	want := name + ":"
+// 	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+// 		if strings.HasPrefix(line, want) {
+// 			return true, nil
+// 		}
+// 	}
+// 	return false, nil
+// }
 
 // Shuts down the temporary hotspot network
 func stopHotspot() error {
@@ -173,59 +183,71 @@ func stopHotspot() error {
 }
 
 // Shuts down the wifi network
-func stopWifi() error {
+func stopWifi(wifiProfile string) error {
 	logger.Debug("Entered stopWifi")
 	// Be sure there is a wifi connection profile before trying to down it!
-	exists, err := profileExists(WiFiConnName)
+	exists, err := profileExists(wifiProfile)
 	if err != nil {
 		logger.Debug(fmt.Sprintf("Failed check for wifi connection. %s", err))
 		return err
 	}
 	if exists {
-		logger.Debug(fmt.Sprintf("🛑 Shut down wifi with connection name %s", WiFiConnName))
-		return exec.Command("sudo", "nmcli", "connection", "down", WiFiConnName).Run()
+		logger.Debug(fmt.Sprintf("🛑 Shut down wifi with connection name %s", wifiProfile))
+		return exec.Command("sudo", "nmcli", "connection", "down", wifiProfile).Run()
 	} else {
 		logger.Debug("No WiFi connection available. No need to shut down.")
 		return nil
 	}
 }
 
-// Commands NetworkManager to join the user-specified network
-func connectToWiFi() error {
+// uses nmcli to delete specified connection profile
+func removeConnection(name string) error {
+	logger.Debug("Entered removeConnection")
+	var cmd *exec.Cmd
+	cmd = exec.Command("sudo", "nmcli", "connection", "delete", name)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, string(output))
+	}
+	return nil
+}
+
+// Commands NetworkManager to join the network specified by ssid, pwd
+func connectToWiFi(connectionName, ssid string, pwd string) error {
 	logger.Debug("Entered connectToWiFi")
 	var cmd *exec.Cmd
 	// Remove old wifi profile and connection
-	logger.Debug(fmt.Sprintf("Shutting down previous WiFi connection %s if it exists.", WiFiConnName))
-	stopWifi()
-	cmd = exec.Command("sudo", "nmcli", "connection", "down", WiFiConnName)
+	logger.Debug(fmt.Sprintf("Shutting down previous WiFi connection %s if it exists.", connectionName))
+	stopWifi(connectionName)
+	cmd = exec.Command("sudo", "nmcli", "connection", "down", connectionName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		logger.Error("❌ Failed to shutdown previous wifi connection.")
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
-	logger.Debug(fmt.Sprintf("Deleting previous WiFi connection %s if it exists.", WiFiConnName))
-	cmd = exec.Command("sudo", "nmcli", "connection", "delete", WiFiConnName)
-	output, err = cmd.CombinedOutput()
+	logger.Debug(fmt.Sprintf("Deleting previous WiFi connection %s if it exists.", connectionName))
+	err = removeConnection(connectionName)
 	if err != nil {
+		logger.Error("Failed to remove exiting wifi connection profile.")
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
-	// sudo nmcli device wifi hotspot ifname wlan0 con-name "wifi-home" ssid <SSID> password <password>
+	// Add the new connection profile before trying to bring it up
 	// sudo nmcli connection add type wifi con-name HomeWiFi ifname wlan0 ssid MyNetwork wifi-sec.key-mgmt wpa-psk wifi-sec.psk mysecretpassword
-	logger.Debug(fmt.Sprintf("Adding new WiFi connection profile for %s", WiFiConnName))
+	logger.Debug(fmt.Sprintf("Adding new WiFi connection profile for %s", connectionName))
 	cmd = exec.Command("sudo", "nmcli", "connection", "add",
 		"type", "wifi",
-		"con-name", WiFiConnName,
+		"con-name", connectionName,
 		"ifname", "wlan0",
-		"ssid", currentWiFi.SSID,
+		"ssid", ssid,
 		"wifi-sec.key-mgmt", "wpa-psk",
-		"wifi-sec.psk", currentWiFi.PWD,
+		"wifi-sec.psk", pwd,
 	)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
-	logger.Debug(fmt.Sprintf("Bring up WiFi connection %s", WiFiConnName))
-	cmd = exec.Command("sudo", "nmcli", "connection", "up", WiFiConnName)
+	logger.Debug(fmt.Sprintf("Bring up WiFi connection %s", connectionName))
+	cmd = exec.Command("sudo", "nmcli", "connection", "up", connectionName)
 	// cmd = exec.Command("sudo", "nmcli", "device", "wifi", "connect", ssid, "password", password)
 	output, err = cmd.CombinedOutput()
 	if err != nil {
@@ -297,7 +319,6 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 	if strings.TrimSpace(connName) == "" {
 		return false, fmt.Errorf("connName is empty")
 	}
-
 	// Check connection exists:
 	// nmcli -t -f NAME con show
 	existsCmd := exec.CommandContext(ctx, "nmcli", "-t", "-f", "NAME", "con", "show")
@@ -307,7 +328,6 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 	if err := existsCmd.Run(); err != nil {
 		return false, fmt.Errorf("nmcli con show failed: %w (%s)", err, strings.TrimSpace(existsOut.String()))
 	}
-
 	found := false
 	for _, line := range strings.Split(existsOut.String(), "\n") {
 		if strings.TrimSpace(line) == connName {
@@ -318,7 +338,6 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 	if !found {
 		return false, nil // not existing -> not active
 	}
-
 	// Check if that specific connection is active:
 	// nmcli -t -f NAME,TYPE,DEVICE con show --active
 	activeCmd := exec.CommandContext(ctx, "nmcli", "-t", "-f", "NAME,TYPE,DEVICE", "con", "show", "--active")
@@ -328,7 +347,6 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 	if err := activeCmd.Run(); err != nil {
 		return false, fmt.Errorf("nmcli con show --active failed: %w (%s)", err, strings.TrimSpace(activeOut.String()))
 	}
-
 	for _, line := range strings.Split(activeOut.String(), "\n") {
 		// -t produces colon-separated fields by default: NAME:TYPE:DEVICE
 		// Name is the first field.
@@ -337,7 +355,6 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 			return true, nil
 		}
 	}
-
 	return false, nil
 }
 
