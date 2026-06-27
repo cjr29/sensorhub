@@ -13,38 +13,30 @@ func main() {
 	configureLogging()
 
 	// Check if sensor hub is already configured to connect to a Wi-Fi network. If not, start the hotspot and web server for setup.
-	logger.Debug("Check if Sensor Hub config file exists")
-	if isConfigFile() {
-		logger.Debug("Config file exists, check if it has an SSID and PWD")
-		if err := currentWiFi.getSSIDPWD(); err == nil {
-			logger.Info(fmt.Sprintf("Already configured to connect to Wi-Fi SSID:%s. Now test connection.", currentWiFi.SSID))
-			if hasInternet() {
-				logger.Info(fmt.Sprintf("WiFi verified on and connected to %s.", currentWiFi.SSID))
-			} else {
-				logger.Info(fmt.Sprintf("Configured Wi-Fi network %s not currently reachable. Starting hotspot configuration.", currentWiFi.SSID))
-				logger.Debug("Calling loginWifiViaHotspot()")
-				// Start local Web server on :8080 to take commands from client
-				// index, list available SSIDs, logon to SSID
-
-				/*******************/
-				loginWifiViaHotspot()
-				/*******************/
-
-				logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
-			}
-		} else {
-			logger.Info("WiFi has not been configured. Starting hotspot configuration.")
-			logger.Debug("Calling loginViaHotspot()")
-			//configureViaHotspot()
-			loginWifiViaHotspot()
-			logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
-		}
-	} else {
-		// SSID not configured
-		logger.Debug("Sensor Hub config file does not exist, call loginViaHotSpot()")
+	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
+	logger.Debug("Check if Sensor Hub config file exists.")
+	if !isConfigFile() {
+		// Sensorhub WiFi has not been configured, run Hotspot setup
 		loginWifiViaHotspot()
 		logger.Debug(fmt.Sprintf("Returned from loginViaHotspot. WiFi connected to %s", currentWiFi.SSID))
 	}
+	// Wifi configured, is SSID reachable?
+	logger.Debug("Config file exists, check if it has an SSID and PWD")
+	_, err := currentWiFi.getSSIDPWD()
+	if err != nil {
+		// Bad config file, run configuration
+		logger.Debug("Bad config file, run loginWifiViaHotspot")
+		loginWifiViaHotspot()
+		logger.Debug(fmt.Sprintf("Returned from loginViaHotspot. WiFi connected to %s", currentWiFi.SSID))
+	}
+	// Config file good. Test Internet.
+	if !hasInternet() {
+		// Can't connect to Internet. Run Hotspot to configure
+		logger.Debug("Can't connect to Internet. Calling loginViaHotspot")
+		loginWifiViaHotspot()
+		logger.Debug(fmt.Sprintf("Returned from loginViaHotspot. WiFi connected to %s", currentWiFi.SSID))
+	}
+	logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
 	logger.Debug("WiFi and Internet access verified")
 
 	/************************************************************************************/

@@ -506,21 +506,21 @@ func (w *WiFi) saveSSIDPWD() error {
 	return nil
 }
 
-func (w *WiFi) getSSIDPWD() error {
+func (w *WiFi) getSSIDPWD() (bool, error) {
 	// Read JSON from file
 	jsonData, err := os.ReadFile(pathToHubConfig)
 	if err != nil {
 		logger.Error("Unable to read the configuration file")
-		return err
+		return false, err
 	}
 	// Convert JSON to struct
 	err = json.Unmarshal(jsonData, w)
 	if err != nil {
 		logger.Error("Unable to convert JSON to WiFi struct")
-		return err
+		return false, err
 	}
 	// Successful. SSID and PWD are in the WiFi struct w
-	return nil
+	return true, nil
 }
 
 // Check for existence of configuration file
