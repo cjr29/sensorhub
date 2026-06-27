@@ -90,51 +90,58 @@ func loginWifiViaHotspot() {
 // Configures and enables the Pi's native hotspot using nmcli
 func startHotspot() error {
 	logger.Debug("Entered startHotspot")
+
 	// 1. First be sure to shut down any Wifi connection before starting the hotspot
 	active, err := isConnectionActive(WiFiConnName)
 	if active {
 		logger.Debug(fmt.Sprintf("%s wifi connection is active", WiFiConnName))
+		// WiFi needs to be down before we can run the hotspot
+		err = stopHotspot()
+		if err != nil {
+			logger.Error("Failed to stop hotspot.")
+			return err
+		}
 	} else {
 		logger.Debug(fmt.Sprintf("%s wifi connection is not active", WiFiConnName))
 	}
 
-	exists, err := connectionExists(context.Background(), HotspotConnName)
-	if err != nil {
-		logger.Debug("SensorHubHotspot not active")
-		panic(err)
+	// exists, err := connectionExists(context.Background(), HotspotConnName)
+	// if err != nil {
+	// 	logger.Debug("SensorHubHotspot not active")
+	// 	panic(err)
+	// }
+	// if exists {
+	// 	// If exists, check if active and if it is , stop it
+	// 	active, err := connectionActive(context.Background(), HotspotConnName)
+	// 	if err != nil {
+	// 		logger.Debug("SensorHubHotspot not active")
+	// 		panic(err)
+	// 	}
+	// 	if active {
+	// 		// Connection is active, bring it down
+	// 		err = stopHotspot()
+	// 		if err != nil {
+	// 			logger.Error(" Unable to stop hotspot")
+	// 			return err
+	// 		}
+	// 	} else {
+	// 		// Exists, but not active, done
+	// 		return nil
+	// 	}
+	// } else {
+	// Create the new hotspot network profile and start it
+	// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
+	createCmd := exec.Command("sudo", "nmcli", "device", "wifi", "hotspot",
+		"ifname", "wlan0",
+		"con-name", HotspotConnName,
+		"ssid", HotspotSSID,
+		"password", HotspotPass,
+	)
+	if err := createCmd.Run(); err != nil {
+		logger.Debug(fmt.Sprintf("Failed to create new hotspot with connection name %s", HotspotConnName))
+		return fmt.Errorf("nmcli hotspot creation failed: %w", err)
 	}
-	if exists {
-		// If exists, check if active and if it is , stop it
-		active, err := connectionActive(context.Background(), HotspotConnName)
-		if err != nil {
-			logger.Debug("SensorHubHotspot not active")
-			panic(err)
-		}
-		if active {
-			// Connection is active, bring it down
-			err = stopHotspot()
-			if err != nil {
-				logger.Error(" Unable to stop hotspot")
-				return err
-			}
-		} else {
-			// Exists, but not active, done
-			return nil
-		}
-	} else {
-		// Create the new hotspot network profile and start it
-		// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
-		createCmd := exec.Command("sudo", "nmcli", "device", "wifi", "hotspot",
-			"ifname", "wlan0",
-			"con-name", HotspotConnName,
-			"ssid", HotspotSSID,
-			"password", HotspotPass,
-		)
-		if err := createCmd.Run(); err != nil {
-			logger.Debug(fmt.Sprintf("Failed to create new hotspot with connection name %s", HotspotConnName))
-			return fmt.Errorf("nmcli hotspot creation failed: %w", err)
-		}
-	}
+	// }
 	return nil
 }
 
