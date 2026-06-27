@@ -69,21 +69,23 @@ func loginWifiViaHotspot() {
 	currentWiFi.PWD = creds[1]
 
 	logger.Debug(fmt.Sprintf("Received credentials for SSID: %s. \n Shutting down web server to connect to WiFi.", currentWiFi.SSID))
+	// Persist WiFi credentials
+	currentWiFi.saveSSIDPWD()
 
 	// Gracefully shut down server so the HTTP response finishes flushing to the browser
 	_ = server.Shutdown(context.Background())
 
-	logger.Debug("Stopping hotspot...")
+	logger.Debug("Stopping hotspot.")
 	_ = stopHotspot()
 
-	logger.Debug(fmt.Sprintf("⚡ Connecting to network '%s'...", currentWiFi.SSID))
+	logger.Debug(fmt.Sprintf("Connecting to WiFi network '%s'...", currentWiFi.SSID))
 	if err := connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD); err != nil {
-		logger.Error(fmt.Sprintf("❌ Failed to connect: %v. Re-triggering hotspot loop...", err))
+		logger.Error(fmt.Sprintf("Failed to connect: %v. Re-triggering hotspot loop...", err))
 		// Option: Call main() again or loop to safely recover the hotspot state
 		// Generate signal to stop Sensor Hub
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}
-	logger.Info(fmt.Sprintf("✅ Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
+	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
 }
 
 // Configures and enables the Pi's native hotspot using nmcli
@@ -178,21 +180,22 @@ func startHotspot() error {
 // Shuts down the temporary hotspot network
 func stopHotspot() error {
 	logger.Debug("Entered stopHotspot")
-	logger.Debug(fmt.Sprintf("🛑 Shut down hotspot with connection name %s", HotspotConnName))
+	logger.Debug(fmt.Sprintf("Shut down hotspot with connection name %s", HotspotConnName))
 	return exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
 }
 
 // Shuts down the wifi network
 func stopWifi(wifiProfile string) error {
 	logger.Debug("Entered stopWifi")
+	logger.Debug(fmt.Sprintf("Shutting down previous WiFi connection %s if it exists.", wifiProfile))
 	// Be sure there is a wifi connection profile before trying to down it!
 	exists, err := profileExists(wifiProfile)
 	if err != nil {
-		logger.Debug(fmt.Sprintf("Failed check for wifi connection. %s", err))
+		logger.Debug(fmt.Sprintf("Failed check for wifi connection profile. %s", err))
 		return err
 	}
 	if exists {
-		logger.Debug(fmt.Sprintf("🛑 Shut down wifi with connection name %s", wifiProfile))
+		logger.Debug(fmt.Sprintf("Shut down wifi with connection name %s", wifiProfile))
 		return exec.Command("sudo", "nmcli", "connection", "down", wifiProfile).Run()
 	} else {
 		logger.Debug("No WiFi connection available. No need to shut down.")
@@ -217,12 +220,15 @@ func connectToWiFi(connectionName, ssid string, pwd string) error {
 	logger.Debug("Entered connectToWiFi")
 	var cmd *exec.Cmd
 	// Remove old wifi profile and connection
-	logger.Debug(fmt.Sprintf("Shutting down previous WiFi connection %s if it exists.", connectionName))
-	stopWifi(connectionName)
+	err := stopWifi(connectionName)
+	if err != nil {
+		logger.Debug(fmt.Sprintf("stopWifi failed with error: %s", err))
+		panic(err)
+	}
 	cmd = exec.Command("sudo", "nmcli", "connection", "down", connectionName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logger.Error("❌ Failed to shutdown previous wifi connection.")
+		logger.Error("Failed to shutdown previous wifi connection.")
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
 	logger.Debug(fmt.Sprintf("Deleting previous WiFi connection %s if it exists.", connectionName))
@@ -259,7 +265,7 @@ func connectToWiFi(connectionName, ssid string, pwd string) error {
 	if err := currentWiFi.saveSSIDPWD(); err == nil {
 		logger.Debug(fmt.Sprintf("WiFi SSID and PWD saved to %s", pathToHubConfig))
 	} else {
-		logger.Error(fmt.Sprintf("❌ Unable to save SSID and password to config file. Error: %s", err))
+		logger.Error(fmt.Sprintf("Unable to save SSID and password to config file. Error: %s", err))
 	}
 	return nil
 }
@@ -267,7 +273,8 @@ func connectToWiFi(connectionName, ssid string, pwd string) error {
 // ProfileExists returns true if nmcli has a connection profile with the given name.
 func profileExists(name string) (bool, error) {
 	// Use nmcli to list connection names and check for an exact match.
-	cmd := exec.Command("nmcli", "-t", "-f", "NAME", "connection", "show")
+	logger.Debug(fmt.Sprintf("Entering profileExists to check existence of %s", name))
+	cmd := exec.Command("nmcli", "-t", "-f", "name", "connection", "show")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return false, err
