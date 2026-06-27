@@ -96,10 +96,10 @@ func startHotspot() error {
 	if active {
 		logger.Debug(fmt.Sprintf("%s wifi connection is active", WiFiConnName))
 		// WiFi needs to be down before we can run the hotspot
-		err = stopHotspot()
+		err = stopWifi()
 		if err != nil {
-			logger.Error("Failed to stop hotspot.")
-			return err
+			logger.Error("Failed to stop wifi. Cannot proceeed with setup")
+			panic(err)
 		}
 	} else {
 		logger.Debug(fmt.Sprintf("%s wifi connection is not active", WiFiConnName))
@@ -172,6 +172,13 @@ func stopHotspot() error {
 	logger.Debug("Entered stopHotspot")
 	logger.Debug(fmt.Sprintf("🛑 Shut down hotspot with connection name %s", HotspotConnName))
 	return exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
+}
+
+// Shuts down the wifi network
+func stopWifi() error {
+	logger.Debug("Entered stopWifi")
+	logger.Debug(fmt.Sprintf("🛑 Shut down wifi with connection name %s", WiFiConnName))
+	return exec.Command("sudo", "nmcli", "connection", "down", WiFiConnName).Run()
 }
 
 // Commands NetworkManager to join the user-specified network
