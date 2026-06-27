@@ -46,7 +46,7 @@ type SSIDPageData struct {
 	Error    string
 }
 
-var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
+// var tmpl = template.Must(template.New("").ParseGlob("/usr/local/bin/sensorhub/templates/*.html"))
 var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
 
 var currentWiFi = WiFi{}
@@ -90,6 +90,14 @@ func loginWifiViaHotspot() {
 // Configures and enables the Pi's native hotspot using nmcli
 func startHotspot() error {
 	logger.Debug("Entered startHotspot")
+	// 1. First be sure to shut down any Wifi connection before starting the hotspot
+	active, err := isConnectionActive(WiFiConnName)
+	if active {
+		logger.Debug(fmt.Sprintf("%s wifi connection is active", WiFiConnName))
+	} else {
+		logger.Debug(fmt.Sprintf("%s wifi connection is not active", WiFiConnName))
+	}
+
 	exists, err := connectionExists(context.Background(), HotspotConnName)
 	if err != nil {
 		logger.Debug("SensorHubHotspot not active")
@@ -128,6 +136,28 @@ func startHotspot() error {
 		}
 	}
 	return nil
+}
+
+// IsConnectionActive returns true if `name` is currently active in NetworkManager.
+func isConnectionActive(name string) (bool, error) {
+	// nmcli -t -f NAME,DEVICE connection show --active
+	// Output lines like: "MyVPN:eth0"
+	cmd := exec.Command("nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	if err := cmd.Run(); err != nil {
+		return false, fmt.Errorf("nmcli failed: %v (%s)", err, strings.TrimSpace(out.String()))
+	}
+
+	want := name + ":"
+	for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+		if strings.HasPrefix(line, want) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Shuts down the temporary hotspot network
