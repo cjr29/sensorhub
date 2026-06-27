@@ -214,12 +214,16 @@ func stopWifi(wifiProfile string) error {
 		return err
 	}
 	if exists {
-		logger.Debug(fmt.Sprintf("Shut down wifi with connection name %s", wifiProfile))
-		return exec.Command("sudo", "nmcli", "connection", "down", wifiProfile).Run()
+		active, _ := connectionActive(context.Background(), wifiProfile)
+		if active {
+			logger.Debug(fmt.Sprintf("Shut down wifi with connection name %s", wifiProfile))
+			return exec.Command("sudo", "nmcli", "connection", "down", wifiProfile).Run()
+		}
 	} else {
-		logger.Debug("No WiFi connection available. No need to shut down.")
+		logger.Debug("No active WiFi connection available. No need to shut down.")
 		return nil
 	}
+	return nil
 }
 
 // uses nmcli to delete specified connection profile
