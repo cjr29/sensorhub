@@ -72,7 +72,7 @@ func main() {
 				}
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
-				<-ctx.Done()
+				// <-ctx.Done()
 				// Wait for cancellation and exit
 				// Signal everyone to halt
 				cancel()
