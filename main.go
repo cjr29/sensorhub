@@ -42,6 +42,7 @@ func main() {
 
 	/************************************************************************************/
 	/********  WiFi Configured, proceed with processing *********************************/
+
 	logger.Info("Starting background processes")
 	// Start the background processing threads now that we are connected to WiFi
 	go processSensorData(ctx, &wg)    // Background thread to process sensor data
@@ -54,10 +55,8 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
-	// Watches for system signals in a separate goroutine so it doesn't block the main work loop
+	// Watch for system signals in a separate goroutine so it doesn't block the main work loop
 	logger.Debug("Start go function to monitor signals.")
-	logger.Info("Sensor Hub setup complete.")
-
 	// Go function to watch for log rotations and reopen log
 	go func() {
 		for {
@@ -72,17 +71,19 @@ func main() {
 				}
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
-				// <-ctx.Done()
-				// Wait for cancellation and exit
-				// Signal everyone to halt
 				cancel()
 				return
 			}
 		}
 	}()
 
+	logger.Info("Sensor Hub setup complete.")
+
 	// Wait until background threads have halted
 	wg.Wait()
+	<-ctx.Done()
+	// Wait for cancellation and exit
+	// Signal everyone to halt
 	logger.Info("All background processing has stopped.")
 	logger.Info("Sensor Hub stopped")
 	os.Exit(0)
