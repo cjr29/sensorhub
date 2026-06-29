@@ -12,7 +12,7 @@ func removeExpiredSensors(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Info("Shutting down expired sensors processing thread.")
+			logger.Info("!!!!! Shutting down remove expired sensors thread.")
 			time.Sleep(time.Duration(1) * time.Second)
 			return // quit
 		default:

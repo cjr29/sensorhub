@@ -12,7 +12,7 @@ func processSensorData(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Info("Shutting down sensor data processing thread.")
+			logger.Info("!!!!! Shutting down sensor data processing thread.")
 			time.Sleep(time.Duration(1) * time.Second)
 			return // quit
 		default:

@@ -73,8 +73,6 @@ func main() {
 			// Stay in signal loop, don't return to main thread
 		case syscall.SIGINT, syscall.SIGTERM:
 			// Stop work immediately from app perspective
-			logger.Debug("SIGTERM received by main thread.")
-			logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
 			// Give workers time to exit
 			done := make(chan struct{})
 			go func() {
@@ -83,10 +81,10 @@ func main() {
 			}()
 			select {
 			case <-done:
-				logger.Info("All background processing has stopped.")
-				logger.Info("Sensor Hub stopped")
+				logger.Info("!!!!! All background processing has stopped.")
+				logger.Info("!!!!! Sensor Hub stopped")
 			case <-time.After(10 * time.Second):
-				logger.Info("Shutdown timed out. Exiting.")
+				logger.Info("!!!!! Shutdown timed out. Exiting.")
 			}
 		}
 	}
