@@ -14,7 +14,7 @@ func main() {
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
-	logger.Debug("Check if Sensor Hub has WiFi has been configured.")
+	logger.Debug("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
 		// WiFi not configured. Use hotspot configuration.
 		loginWiFiViaHotspot()
@@ -47,7 +47,7 @@ func main() {
 	// 	logger.Debug(fmt.Sprintf("Returned from loginViaHotspot. WiFi connected to %s", currentWiFi.SSID))
 	// }
 	logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
-	logger.Debug("WiFi and Internet access verified")
+	logger.Info("WiFi and Internet access verified")
 
 	/************************************************************************************/
 	/********  WiFi Configured, proceed with processing *********************************/

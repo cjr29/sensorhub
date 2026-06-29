@@ -559,21 +559,24 @@ func hasInternet() bool {
 
 // Checks to see if WiFi has already been configured, and if so, restarts the connection
 func wifiConfigured() bool {
+	logger.Debug("Entering wifiConfigured.")
 	// Does config file exist?
 	_, err := currentWiFi.getSSIDPWD()
 	if err != nil {
+		// WiFi not configured
+		logger.Debug("Unable to find or read config file. WiFi not configured.")
+		return false
+	} else {
 		// Has an SSID and PWD. Try opening a connection.
 		err = connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
 		if err != nil {
 			// WiFi up
+			logger.Debug(fmt.Sprintf("Brought up preconfigured wifi for SSID %s", currentWiFi.SSID))
 			return true
 		} else {
 			// Unable to copen wifi using existing configuration
 			logger.Debug(fmt.Sprintf("Unable to open WiFi with existing configuration for SSID %s", currentWiFi.SSID))
 			return false
 		}
-	} else {
-		// WiFi not configured
-		return false
 	}
 }
