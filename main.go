@@ -73,17 +73,17 @@ func main() {
 				cancel()
 				// Wait until they have all halted
 				wg.Wait()
-				logger.Info(fmt.Sprintf("All background processing stopped."))
+				logger.Info("All background processing stopped.")
 				return
 			}
 		}
 	}()
-	logger.Debug("Activated go function to watch for system signals")
-
 	logger.Info("Sensor Hub setup complete.")
 
 	// Wait for cancellation and exit
+	logger.Debug("main is waiting for ctx.Done()")
 	<-ctx.Done()
 	logger.Info("Sensor Hub stopped")
+	time.Sleep(time.Duration(2) * time.Second)
 	os.Exit(0)
 }

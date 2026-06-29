@@ -13,6 +13,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup) {
 		select {
 		case <-ctx.Done():
 			logger.Info("Shutting down REST service thread.")
+			time.Sleep(time.Duration(1) * time.Second)
 			return // quit
 		default:
 			amt := 4 // seconds delay
