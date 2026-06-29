@@ -396,7 +396,12 @@ func (w *WiFi) getSSIDPWD() (bool, error) {
 // Check for live connectivity by pinging an public DNS server
 func hasInternet() bool {
 	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
-	return cmd.Run() == nil
+	err := cmd.Run()
+	if err != nil {
+		return false
+	} else {
+		return true
+	}
 }
 
 // Checks to see if WiFi has already been configured, and if so, restarts the connection
