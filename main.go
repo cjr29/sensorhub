@@ -72,18 +72,18 @@ func main() {
 				}
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
-				// <-ctx.Done()
+				<-ctx.Done()
 				// Wait for cancellation and exit
 				// Signal everyone to halt
 				cancel()
-				// Wait until backgrounds threads have halted
-				wg.Wait()
-				logger.Info("All background processing has stopped.")
-				logger.Info("Sensor Hub stopped")
-				os.Exit(0)
-				// return
+				return
 			}
 		}
 	}()
 
+	// Wait until background threads have halted
+	wg.Wait()
+	logger.Info("All background processing has stopped.")
+	logger.Info("Sensor Hub stopped")
+	os.Exit(0)
 }
