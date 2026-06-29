@@ -12,12 +12,20 @@ import (
 
 func main() {
 
+	const workers = 4 // 4 background processes
+
 	configureLogging()
 
 	// Set up signals and wait group for goroutines
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// ctx, cancel := context.WithCancel(context.Background())
+
+	// Context canceled on SIGTERM (systemd stop)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+
+	defer stop()
+	// defer cancel()
 	var wg sync.WaitGroup
+	wg.Add(workers)
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
@@ -71,7 +79,6 @@ func main() {
 				}
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
-				cancel()
 				return
 			}
 		}
@@ -80,8 +87,8 @@ func main() {
 	logger.Info("Sensor Hub setup complete.")
 
 	// Wait until background threads have halted
-	wg.Wait()
 	<-ctx.Done()
+	wg.Wait()
 	// Wait for cancellation and exit
 	// Signal everyone to halt
 	logger.Info("All background processing has stopped.")
