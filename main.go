@@ -57,34 +57,35 @@ func main() {
 	// Watches for system signals in a separate goroutine so it doesn't block the main work loop
 	logger.Debug("Start go function to monitor signals.")
 	logger.Info("Sensor Hub setup complete.")
-	// Wait for cancellation and exit
-	logger.Debug("main is waiting for ctx.Done()")
-	// go func() {
-	for {
-		sig := <-sigCh
-		switch sig {
-		case syscall.SIGHUP:
-			// reopen log file after logrotate signal received
-			if err := logFh.Reopen(logFile); err != nil {
-				logger.Error("Failed to reopen log file", "err", err)
-			} else {
-				logger.Debug("Reopened log file after SIGHUP")
-			}
-		case syscall.SIGINT, syscall.SIGTERM:
-			logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
-			// Signal everyone to halt
-			cancel()
-			// Wait until they have all halted
-			wg.Wait()
-			logger.Info("All background processing stopped.")
-			// <-ctx.Done()
-			logger.Info("Sensor Hub stopped")
-			os.Exit(0)
-			// return
-		}
-	}
-	// }()
 
-	// time.Sleep(time.Duration(2) * time.Second)
-	// os.Exit(0)
+	// Go function to watch for log rotations and reopen log
+	go func() {
+		for {
+			sig := <-sigCh
+			switch sig {
+			case syscall.SIGHUP:
+				// reopen log file after logrotate signal received
+				if err := logFh.Reopen(logFile); err != nil {
+					logger.Error("Failed to reopen log file", "err", err)
+				} else {
+					logger.Debug("Reopened log file after SIGHUP")
+				}
+				// case syscall.SIGINT, syscall.SIGTERM:
+				// 	logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
+				// 	// <-ctx.Done()
+				// 	logger.Info("Sensor Hub stopped")
+				// 	os.Exit(0)
+				// 	// return
+			}
+		}
+	}()
+
+	// Wait for cancellation and exit
+	// Signal everyone to halt
+	cancel()
+	// Wait until backgrounds threads have halted
+	wg.Wait()
+	logger.Info("All background processing stopped.")
+	time.Sleep(time.Duration(2) * time.Second)
+	os.Exit(0)
 }
