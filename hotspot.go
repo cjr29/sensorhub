@@ -569,7 +569,7 @@ func wifiConfigured() bool {
 	} else {
 		// Has an SSID and PWD. Try opening a connection.
 		err = connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
-		if err != nil {
+		if err == nil {
 			// WiFi up
 			logger.Debug(fmt.Sprintf("Brought up preconfigured wifi for SSID %s", currentWiFi.SSID))
 			return true
