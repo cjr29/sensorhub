@@ -38,7 +38,7 @@ func configureLogging() {
 		os.Exit(1)
 	}
 	logger = slog.New(logFh)
-	logger.Debug(fmt.Sprintf("*** SensorHub started *** Logging configured for %s.", LogLevel.String()))
+	logger.Info(fmt.Sprintf("*** SensorHub started *** Logging configured for %s.", LogLevel.String()))
 }
 
 func ensureLogDir() error {
