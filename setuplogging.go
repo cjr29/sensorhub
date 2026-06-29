@@ -37,7 +37,7 @@ func configureLogging() {
 		os.Exit(1)
 	}
 	logger = slog.New(logFh)
-	logger.Info(fmt.Sprintf("Logging configured for %s.", LogLevel.String()))
+	logger.Debug(fmt.Sprintf("Logging configured for %s.", LogLevel.String()))
 }
 
 func ensureLogDir() error {

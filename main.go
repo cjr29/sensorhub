@@ -14,11 +14,17 @@ func main() {
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
-	logger.Debug("Check if Sensor Hub has WiFi connectivity.")
-	if !hasInternet() {
-		// Cannot ping Internet. Configure Hotspot to set up WiFi.
+	logger.Debug("Check if Sensor Hub has WiFi has been configured.")
+	if !wifiConfigured() {
+		// WiFi not configured. Use hotspot configuration.
 		loginWiFiViaHotspot()
 	}
+
+	// if !hasInternet() {
+	// 	// Cannot ping Internet. Configure Hotspot to set up WiFi.
+	// 	logger.Debug("Could not access Internet. Configure WiFi using hotspot.")
+	// 	loginWiFiViaHotspot()
+	// }
 	// if !isConfigFile() {
 	// 	// Sensorhub WiFi has not been configured, run Hotspot setup
 	// 	loginWifiViaHotspot()

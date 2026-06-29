@@ -440,12 +440,6 @@ func startWebServer(credChan chan [2]string) *http.Server {
 	return server
 }
 
-// Check for live connectivity by pinging an public DNS server
-func hasInternet() bool {
-	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
-	return cmd.Run() == nil
-}
-
 // runNmcli runs nmcli command with timeout and returns stdout or an error.
 func runNmcli(args ...string) (string, error) {
 	cmd := exec.Command("nmcli", args...)
@@ -555,4 +549,31 @@ func isConfigFile() bool {
 		return true // File exists
 	}
 	return false // No config file, return false
+}
+
+// Check for live connectivity by pinging an public DNS server
+func hasInternet() bool {
+	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
+	return cmd.Run() == nil
+}
+
+// Checks to see if WiFi has already been configured, and if so, restarts the connection
+func wifiConfigured() bool {
+	// Does config file exist?
+	_, err := currentWiFi.getSSIDPWD()
+	if err != nil {
+		// Has an SSID and PWD. Try opening a connection.
+		err = connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
+		if err != nil {
+			// WiFi up
+			return true
+		} else {
+			// Unable to copen wifi using existing configuration
+			logger.Debug(fmt.Sprintf("Unable to open WiFi with existing configuration for SSID %s", currentWiFi.SSID))
+			return false
+		}
+	} else {
+		// WiFi not configured
+		return false
+	}
 }
