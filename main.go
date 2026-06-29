@@ -12,20 +12,10 @@ import (
 
 func main() {
 
-	const workers = 4 // 4 background processes
-
 	configureLogging()
 
 	// Set up signals and wait group for goroutines
 	// ctx, cancel := context.WithCancel(context.Background())
-
-	// Context canceled on SIGTERM (systemd stop)
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM)
-
-	defer stop()
-	// defer cancel()
-	var wg sync.WaitGroup
-	wg.Add(workers)
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
@@ -51,6 +41,16 @@ func main() {
 	/************************************************************************************/
 	/********  WiFi Configured, proceed with processing *********************************/
 
+	// signals: SIGINT/SIGTERM -> shutdown, SIGHUP -> reopen log
+	logger.Debug("Set up channel to catch shutdown signals")
+	// Context canceled on SIGTERM (systemd stop)
+	const workers = 4 // 4 background processes
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+	defer cancel()
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	var wg sync.WaitGroup
+	wg.Add(workers)
 	logger.Info("Starting background processes")
 	// Start the background processing threads now that we are connected to WiFi
 	go processSensorData(ctx, &wg)    // Background thread to process sensor data
@@ -58,40 +58,50 @@ func main() {
 	go removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
 	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
-	// signals: SIGINT/SIGTERM -> shutdown, SIGHUP -> reopen log
-	logger.Debug("Set up channel to catch shutdown signals")
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-
 	// Watch for system signals in a separate goroutine so it doesn't block the main work loop
 	logger.Debug("Start go function to monitor signals.")
-	// Go function to watch for log rotations and reopen log
-	go func() {
-		for {
-			sig := <-sigCh
-			switch sig {
-			case syscall.SIGHUP:
-				// reopen log file after logrotate signal received
-				if err := logFh.Reopen(logFile); err != nil {
-					logger.Error("Failed to reopen log file", "err", err)
-				} else {
-					logger.Debug("Reopened log file after SIGHUP")
-				}
-			case syscall.SIGINT, syscall.SIGTERM:
-				logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
-				return
-			}
-		}
-	}()
-
 	logger.Info("Sensor Hub setup complete.")
+	// go func() {
+	for {
+		sig := <-sigCh
+		switch sig {
+		case syscall.SIGHUP:
+			// watch for log rotations and reopen log
+			logger.Debug("SIGHUP received by main thread.")
+			// reopen log file after logrotate signal received
+			if err := logFh.Reopen(logFile); err != nil {
+				logger.Error("Failed to reopen log file", "err", err)
+			} else {
+				logger.Debug("Reopened log file after SIGHUP")
+			}
+			// Stay in signal loop, don't return to main thread
+		case syscall.SIGINT, syscall.SIGTERM:
+			// Stop work immediately from app perspective
+			logger.Debug("SIGTERM received by main thread.")
+			logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
+			// Give workers time to exit
+			done := make(chan struct{})
+			go func() {
+				wg.Wait()
+				close(done)
+			}()
+			select {
+			case <-done:
+				logger.Info("All background processing has stopped.")
+				logger.Info("Sensor Hub stopped")
+			case <-time.After(10 * time.Second):
+				logger.Info("Shutdown timed out. Exiting.")
+			}
+			// Wait until background threads have halted
+			// <-ctx.Done() // Blocking until signal received
+			// wg.Wait()
+			// Wait for cancellation and exit
+			// Signal everyone to halt
 
-	// Wait until background threads have halted
-	<-ctx.Done()
-	wg.Wait()
-	// Wait for cancellation and exit
-	// Signal everyone to halt
-	logger.Info("All background processing has stopped.")
-	logger.Info("Sensor Hub stopped")
-	os.Exit(0)
+			// os.Exit(0)
+			// cancel()
+		}
+	}
+	// }()
+
 }
