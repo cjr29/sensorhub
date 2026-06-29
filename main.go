@@ -19,6 +19,8 @@ func main() {
 	if !wifiConfigured() {
 		// WiFi not configured. Use hotspot configuration.
 		loginWiFiViaHotspot()
+	} else {
+		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
 	}
 
 	logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
