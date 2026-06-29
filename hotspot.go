@@ -398,7 +398,6 @@ func hasInternet() bool {
 	logger.Debug("Entered hasInternet, attempt ping outside local network.")
 	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
 	err := cmd.Run()
-	logger.Debug(fmt.Sprintf("hasInternet return code %s", err))
 	if err != nil {
 		return false
 	} else {
@@ -420,7 +419,7 @@ func wifiConfigured() bool {
 		err = connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
 		if err == nil {
 			// WiFi up
-			logger.Debug(fmt.Sprintf("Brought up preconfigured wifi for SSID %s", currentWiFi.SSID))
+			logger.Debug(fmt.Sprintf("WiFi preconfigured for SSID %s", currentWiFi.SSID))
 			return true
 		} else {
 			// Unable to copen wifi using existing configuration

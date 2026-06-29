@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	Logging  = true            // Always on for logging. Set level with LogLevel property
-	LogLevel = slog.LevelDebug // Change to Error for production
+	Logging = true // Always on for logging. Set level with LogLevel property
+	// LogLevel = slog.LevelDebug // Change to Error for production
+	LogLevel = slog.LevelInfo // Change to Error for production
 	logDir   = "/var/log/sensorhub"
 	logFile  = "/var/log/sensorhub/sensorhub.log"
 )
