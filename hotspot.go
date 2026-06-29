@@ -395,8 +395,10 @@ func (w *WiFi) getSSIDPWD() (bool, error) {
 
 // Check for live connectivity by pinging an public DNS server
 func hasInternet() bool {
+	logger.Debug("Entered hasInternet, attempt ping outside local network.")
 	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
 	err := cmd.Run()
+	logger.Debug(fmt.Sprintf("hasInternet return code %s", err))
 	if err != nil {
 		return false
 	} else {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -21,6 +22,8 @@ func main() {
 	}
 
 	logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
+	logger.Debug("Pause 2 seconds for WiFi to stabilize before checking Internet access.")
+	time.Sleep(time.Duration(2) * time.Second)
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
