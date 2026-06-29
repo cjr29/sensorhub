@@ -70,22 +70,20 @@ func main() {
 				} else {
 					logger.Debug("Reopened log file after SIGHUP")
 				}
-				// case syscall.SIGINT, syscall.SIGTERM:
-				// 	logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
-				// 	// <-ctx.Done()
-				// 	logger.Info("Sensor Hub stopped")
-				// 	os.Exit(0)
-				// 	// return
+			case syscall.SIGINT, syscall.SIGTERM:
+				logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
+				// <-ctx.Done()
+				// Wait for cancellation and exit
+				// Signal everyone to halt
+				cancel()
+				// Wait until backgrounds threads have halted
+				wg.Wait()
+				logger.Info("All background processing has stopped.")
+				logger.Info("Sensor Hub stopped")
+				os.Exit(0)
+				// return
 			}
 		}
 	}()
 
-	// Wait for cancellation and exit
-	// Signal everyone to halt
-	cancel()
-	// Wait until backgrounds threads have halted
-	wg.Wait()
-	logger.Info("All background processing stopped.")
-	time.Sleep(time.Duration(2) * time.Second)
-	os.Exit(0)
 }
