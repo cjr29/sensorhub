@@ -14,9 +14,6 @@ func main() {
 
 	configureLogging()
 
-	// Set up signals and wait group for goroutines
-	// ctx, cancel := context.WithCancel(context.Background())
-
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
@@ -58,10 +55,9 @@ func main() {
 	go removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
 	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
-	// Watch for system signals in a separate goroutine so it doesn't block the main work loop
-	logger.Debug("Start go function to monitor signals.")
 	logger.Info("Sensor Hub setup complete.")
-	// go func() {
+
+	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
 		sig := <-sigCh
 		switch sig {
@@ -92,16 +88,6 @@ func main() {
 			case <-time.After(10 * time.Second):
 				logger.Info("Shutdown timed out. Exiting.")
 			}
-			// Wait until background threads have halted
-			// <-ctx.Done() // Blocking until signal received
-			// wg.Wait()
-			// Wait for cancellation and exit
-			// Signal everyone to halt
-
-			// os.Exit(0)
-			// cancel()
 		}
 	}
-	// }()
-
 }
