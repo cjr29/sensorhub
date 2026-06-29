@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -12,6 +13,11 @@ import (
 func main() {
 
 	configureLogging()
+
+	// Set up signals and wait group for goroutines
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var wg sync.WaitGroup
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
@@ -36,10 +42,12 @@ func main() {
 
 	/************************************************************************************/
 	/********  WiFi Configured, proceed with processing *********************************/
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	logger.Debug("Retrieved program context to handle signals")
+	logger.Info("Starting background processes")
+	// Start the background processing threads now that we are connected to WiFi
+	go processSensorData(ctx, &wg)    // Background thread to process sensor data
+	go restService(ctx, &wg)          // Background thread to log that the REST service is still running
+	go removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
+	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	// signals: SIGINT/SIGTERM -> shutdown, SIGHUP -> reopen log
 	logger.Debug("Set up channel to catch shutdown signals")
@@ -61,20 +69,16 @@ func main() {
 				}
 			case syscall.SIGINT, syscall.SIGTERM:
 				logger.Debug(fmt.Sprintf("Shutting down: %s signal received ...", sig.String()))
+				// Signal everyone to halt
 				cancel()
+				// Wait until they have all halted
+				wg.Wait()
+				logger.Info(fmt.Sprintf("All background processing stopped."))
 				return
 			}
 		}
 	}()
 	logger.Debug("Activated go function to watch for system signals")
-
-	logger.Info("Starting background processes")
-
-	// Start the background processing threads now that we are connected to WiFi
-	go processSensorData(ctx)    // Background thread to process sensor data
-	go restService(ctx)          // Background thread to log that the REST service is still running
-	go removeExpiredSensors(ctx) // Background thread to process expired sensors
-	go monitorWiFi(ctx)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	logger.Info("Sensor Hub setup complete.")
 
