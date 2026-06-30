@@ -26,7 +26,6 @@ var (
 type SensorPayload map[string]any
 
 func processSensorDataHandler() {
-
 	var err error
 	db, err = initDB(dbPath)
 	if err != nil {
@@ -113,7 +112,6 @@ func ensureTable(db *sql.DB) error {
 		TEMPERATURE NUMERIC,
 		HUMIDITY NUMERIC,
 		SENSORNAME TEXT,
-		SITE TEXT,
 		STATION TEXT,
 		LOCATION TEXT,
 		DESCRIPTION TEXT,
@@ -126,11 +124,11 @@ func ensureTable(db *sql.DB) error {
 func onMessage(c mqtt.Client, m mqtt.Message) {
 	topic := string(m.Topic())
 	parts := strings.Split(topic, "/")
-	if len(parts) < 4 {
+	if len(parts) < 3 {
 		return
 	}
 
-	sSite := parts[0]
+	// sHub := parts[0]
 	sStation := parts[1]
 	sWeather := parts[2]
 	sSensors := parts[3]
@@ -157,7 +155,6 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		curTemperature sql.NullFloat64
 		curHumidity    sql.NullFloat64
 		curSensorName  sql.NullString
-		curDBSite      sql.NullString
 		curLocation    sql.NullString
 		curDescription sql.NullString
 		curActive      sql.NullInt64
@@ -165,17 +162,17 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 
 	row := db.QueryRow(
 		`SELECT ID, TIME, SENSORID, MODEL, CHANNEL, BATTERY, TEMPERATURE, HUMIDITY,
-		        SENSORNAME, SITE, STATION, LOCATION, DESCRIPTION, ACTIVE
+		        SENSORNAME, STATION, LOCATION, DESCRIPTION, ACTIVE
 		   FROM SENSORS
-		  WHERE SITE = ? AND SENSORID = ?`,
-		sSite, sensorID,
+		  WHERE SENSORID = ?`,
+		sensorID,
 	)
 
 	// STATION is scanned into a dummy since we don't need the old one except Python used cur_station = results[0][??].
 	var dummyStation sql.NullString
 	err := row.Scan(
 		&curID, &curTime, &curSensorID, &curModel, &curChannel, &curBattery,
-		&curTemperature, &curHumidity, &curSensorName, &curDBSite,
+		&curTemperature, &curHumidity, &curSensorName,
 		&dummyStation,
 		&curLocation, &curDescription, &curActive,
 	)
@@ -211,10 +208,10 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		active := 0
 
 		_, _ = db.Exec(
-			`INSERT INTO SENSORS (TIME, SENSORID, MODEL, CHANNEL, BATTERY, TEMPERATURE, HUMIDITY, SENSORNAME, SITE, STATION, LOCATION, DESCRIPTION, ACTIVE)
-			 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			`INSERT INTO SENSORS (TIME, SENSORID, MODEL, CHANNEL, BATTERY, TEMPERATURE, HUMIDITY, SENSORNAME, STATION, LOCATION, DESCRIPTION, ACTIVE)
+			 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
 			sTime, sensorID, sModel, sChannel, sBattery, sTemperature, sHumidity,
-			sensorName, sSite, sStation, location, description, active,
+			sensorName, sStation, location, description, active,
 		)
 		return
 	}
@@ -257,7 +254,6 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	_ = curModel
 	_ = curChannel
 	_ = curSensorName
-	_ = curDBSite
 	_ = curLocation
 	_ = curDescription
 	_ = curActive
