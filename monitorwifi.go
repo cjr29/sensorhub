@@ -15,7 +15,7 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
 			logger.Info("!!!!! Shutting down Wi-Fi monitoring thread.")
 			return // quit
 		default:
-			amt := 10 // seconds delay between checks
+			amt := 360 // seconds delay between checks
 			time.Sleep(time.Duration(amt) * time.Second)
 			logger.Debug(fmt.Sprintf("Check WiFi availability every %d seconds", amt))
 

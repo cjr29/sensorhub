@@ -16,7 +16,7 @@ func removeExpiredSensors(ctx context.Context, wg *sync.WaitGroup) {
 			time.Sleep(time.Duration(1) * time.Second)
 			return // quit
 		default:
-			amt := 5 // seconds delay
+			amt := 3600 // seconds delay
 			time.Sleep(time.Duration(amt) * time.Second)
 			logger.Info(fmt.Sprintf("Remove expired sensors every %d seconds", amt))
 		}
