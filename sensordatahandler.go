@@ -13,7 +13,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 var (
@@ -86,7 +86,8 @@ func processSensorDataHandler() {
 }
 
 func initDB(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", path)
+	// modernc.org/sqlite registers driver name "sqlite"
+	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
