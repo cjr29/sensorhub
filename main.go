@@ -76,6 +76,7 @@ func main() {
 		case syscall.SIGINT, syscall.SIGTERM:
 			// Stop work immediately from app perspective
 			// Give workers time to exit
+			close(stopBackground) // signal background threads to stop
 			done := make(chan struct{})
 			go func() {
 				wg.Wait()
@@ -85,7 +86,7 @@ func main() {
 			case <-done:
 				logger.Info("!!!!! All background processing has stopped.")
 				logger.Info("!!!!! Sensor Hub stopped")
-			case <-time.After(10 * time.Second):
+			case <-time.After(20 * time.Second):
 				logger.Info("!!!!! Shutdown timed out. Exiting.")
 			}
 		}
