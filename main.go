@@ -74,13 +74,13 @@ func main() {
 		case syscall.SIGINT, syscall.SIGTERM:
 			logger.Debug("!!!!! SIGINT/SIGTERM received by main thread. Stopping background processing.")
 			// Give workers time to exit
-			done := make(chan struct{})
+			stop := make(chan struct{})
 			go func() {
+				close(stop)
 				wg.Wait()
-				close(done)
 			}()
 			select {
-			case <-done:
+			case <-stop:
 				logger.Info("!!!!! All background processing has stopped.")
 				logger.Info("!!!!! Sensor Hub stopped")
 			case <-time.After(10 * time.Second):
