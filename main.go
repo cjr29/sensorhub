@@ -46,15 +46,14 @@ func main() {
 	defer cancel()
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	stop := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(workers)
 	logger.Info("Starting background processes")
 	// Start the background processing threads now that we are connected to WiFi
-	go processSensorData(ctx, stop, &wg)    // Background thread to process sensor data
-	go restService(ctx, stop, &wg)          // Background thread to log that the REST service is still running
-	go removeExpiredSensors(ctx, stop, &wg) // Background thread to process expired sensors
-	go monitorWiFi(ctx, stop, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
+	go processSensorData(ctx, &wg)    // Background thread to process sensor data
+	go restService(ctx, &wg)          // Background thread to log that the REST service is still running
+	go removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
+	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	logger.Info("Sensor Hub setup complete.")
 
@@ -74,19 +73,18 @@ func main() {
 			// Stay in signal loop, don't return to main thread
 		case syscall.SIGINT, syscall.SIGTERM:
 			logger.Debug("!!!!! SIGINT/SIGTERM received by main thread. Stopping background processing.")
+			// Give workers time to exit
+			done := make(chan struct{})
 			go func() {
-				// Wait for all background threads to finish
 				wg.Wait()
-				close(stop) // signal background threads to stop
+				close(done)
 			}()
 			select {
-			case <-stop:
+			case <-done:
 				logger.Info("!!!!! All background processing has stopped.")
 				logger.Info("!!!!! Sensor Hub stopped")
-				cancel() // cancel the context to signal background threads to stop
-			case <-time.After(20 * time.Second):
-				logger.Info("!!!!! Shutdown timed out. Force exit.")
-				cancel() // cancel the context to signal background threads to stop
+			case <-time.After(10 * time.Second):
+				logger.Info("!!!!! Shutdown timed out. Exiting.")
 			}
 		}
 	}

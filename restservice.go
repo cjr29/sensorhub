@@ -41,11 +41,11 @@ type Sensor struct {
 	Active      int     `json:"ACTIVE"`
 }
 
-func restService(ctx context.Context, stop <-chan struct{}, wg *sync.WaitGroup) {
+func restService(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
-		case <-stop:
+		case <-ctx.Done():
 			logger.Info("!!!!! Shutting down REST service thread.")
 			time.Sleep(time.Duration(1) * time.Second)
 			return // quit
