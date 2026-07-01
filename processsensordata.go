@@ -6,11 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -82,28 +79,32 @@ func processSensorDataHandler() {
 		logger.Error(fmt.Sprintf("MQTT connect failed: %v", token.Error()))
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	<-ctx.Done()
-
-	logger.Debug("Sensor Data Processing shutting down...")
-	_ = db.Close()
-
-	timeout := 5 * time.Second
-	disconnectCtx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	done := make(chan struct{})
-	go func() {
-		client.Disconnect(250)
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-disconnectCtx.Done():
+	//Loop forever, waiting for messages to be processed
+	for {
 	}
-	logger.Debug("Stopped processing sensor data.")
+
+	// ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	// defer stop()
+	// <-ctx.Done()
+
+	// logger.Debug("Sensor Data Processing shutting down...")
+	// _ = db.Close()
+
+	// timeout := 5 * time.Second
+	// disconnectCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	// defer cancel()
+
+	// done := make(chan struct{})
+	// go func() {
+	// 	client.Disconnect(250)
+	// 	close(done)
+	// }()
+
+	// select {
+	// case <-done:
+	// case <-disconnectCtx.Done():
+	// }
+	// logger.Debug("Stopped processing sensor data.")
 }
 
 func initDB(path string) (*sql.DB, error) {
