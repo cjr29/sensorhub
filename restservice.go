@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -41,8 +40,7 @@ type Sensor struct {
 	Active      int     `json:"ACTIVE"`
 }
 
-func restService(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
+func restService(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():

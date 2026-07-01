@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 )
 
-func removeExpiredSensors(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
+func removeExpiredSensors(ctx context.Context) {
+
 	for {
 		select {
 		case <-ctx.Done():

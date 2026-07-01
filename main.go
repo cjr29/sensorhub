@@ -44,18 +44,30 @@ func main() {
 	const workers = 4 // 4 background processes
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer cancel()
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	var wg sync.WaitGroup
-	wg.Add(workers)
+
 	logger.Info("Starting background processes")
 	// Start the background processing threads now that we are connected to WiFi
-	go processSensorData(ctx, &wg)    // Background thread to process sensor data
-	go restService(ctx, &wg)          // Background thread to log that the REST service is still running
-	go removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
-	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
-
-	logger.Info("Sensor Hub setup complete.")
+	var wg sync.WaitGroup
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		processSensorData(ctx) // Background thread to process sensor data
+	}()
+	go func() {
+		defer wg.Done()
+		restService(ctx) // Background thread to log that the REST service is still running
+	}()
+	go func() {
+		defer wg.Done()
+		removeExpiredSensors(ctx) // Background thread to process expired sensors
+	}()
+	go func() {
+		defer wg.Done()
+		monitorWiFi(ctx) // Background thread to monitor Wi-Fi connection and handle setup if needed
+	}()
 
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
@@ -74,18 +86,10 @@ func main() {
 		case syscall.SIGINT, syscall.SIGTERM:
 			logger.Debug("!!!!! SIGINT/SIGTERM received by main thread. Stopping background processing.")
 			// Give workers time to exit
-			stop := make(chan struct{})
-			// go func() {
-			close(stop)
+			cancel()
 			wg.Wait()
-			// }()
-			// select {
-			// case <-stop:
 			logger.Info("!!!!! All background processing has stopped.")
 			logger.Info("!!!!! Sensor Hub stopped")
-			// case <-time.After(10 * time.Second):
-			// 	logger.Info("!!!!! Shutdown timed out. Exiting.")
-			// }
 		}
 	}
 }

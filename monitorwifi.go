@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 )
 
-func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
+func monitorWiFi(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
