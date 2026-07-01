@@ -12,7 +12,6 @@ func removeExpiredSensors(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			logger.Debug("!!!!! Shutting down remove expired sensors thread.")
-			time.Sleep(time.Duration(1) * time.Second)
 			return // quit
 		default:
 			amt := 3600 * 24 // seconds delay

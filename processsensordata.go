@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	_ "modernc.org/sqlite"
@@ -26,7 +25,6 @@ func processSensorData(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			logger.Debug("!!!!! Shutting down sensor data processing thread.")
-			time.Sleep(time.Duration(1) * time.Second)
 			return // quit
 		default:
 			// amt := 6 // seconds delay

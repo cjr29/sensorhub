@@ -90,6 +90,7 @@ func main() {
 			wg.Wait()
 			logger.Info("!!!!! All background processing has stopped.")
 			logger.Info("!!!!! Sensor Hub stopped")
+			return
 		}
 	}
 }
