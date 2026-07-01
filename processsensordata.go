@@ -72,10 +72,6 @@ func processSensorDataHandler() {
 		logger.Error(fmt.Sprintf("MQTT connect failed: %v", token.Error()))
 	}
 
-	//Loop forever, waiting for messages to be processed
-	for {
-	}
-
 	// ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	// defer stop()
 	// <-ctx.Done()

@@ -7,7 +7,6 @@ import (
 )
 
 func removeExpiredSensors(ctx context.Context) {
-
 	for {
 		select {
 		case <-ctx.Done():
