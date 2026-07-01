@@ -73,19 +73,20 @@ func main() {
 			}
 			// Stay in signal loop, don't return to main thread
 		case syscall.SIGINT, syscall.SIGTERM:
-			cancel() // cancel the context to signal background threads to stop
 			logger.Debug("!!!!! SIGINT/SIGTERM received by main thread. Stopping background processing.")
 			go func() {
 				// Wait for all background threads to finish
 				wg.Wait()
-				close(stop)
+				close(stop) // signal background threads to stop
 			}()
 			select {
 			case <-stop:
 				logger.Info("!!!!! All background processing has stopped.")
 				logger.Info("!!!!! Sensor Hub stopped")
+				cancel() // cancel the context to signal background threads to stop
 			case <-time.After(20 * time.Second):
-				logger.Info("!!!!! Shutdown timed out. Exiting.")
+				logger.Info("!!!!! Shutdown timed out. Force exit.")
+				cancel() // cancel the context to signal background threads to stop
 			}
 		}
 	}
