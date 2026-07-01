@@ -46,17 +46,18 @@ func main() {
 	defer cancel()
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	stop := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(workers)
 	logger.Info("Starting background processes")
 	// Start the background processing threads now that we are connected to WiFi
-	go processSensorData(ctx, &wg)    // Background thread to process sensor data
-	go restService(ctx, &wg)          // Background thread to log that the REST service is still running
-	go removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
-	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
+	go processSensorData(ctx, stop, &wg)    // Background thread to process sensor data
+	go restService(ctx, stop, &wg)          // Background thread to log that the REST service is still running
+	go removeExpiredSensors(ctx, stop, &wg) // Background thread to process expired sensors
+	go monitorWiFi(ctx, stop, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	logger.Info("Sensor Hub setup complete.")
-	done := make(chan struct{})
+
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
 		sig := <-sigCh
@@ -77,10 +78,10 @@ func main() {
 			go func() {
 				// Wait for all background threads to finish
 				wg.Wait()
-				close(done)
+				close(stop)
 			}()
 			select {
-			case <-done:
+			case <-stop:
 				logger.Info("!!!!! All background processing has stopped.")
 				logger.Info("!!!!! Sensor Hub stopped")
 			case <-time.After(20 * time.Second):

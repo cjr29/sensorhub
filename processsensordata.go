@@ -22,11 +22,11 @@ var (
 
 type SensorPayload map[string]any
 
-func processSensorData(ctx context.Context, wg *sync.WaitGroup) {
+func processSensorData(ctx context.Context, stop <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-stop:
 			logger.Debug("!!!!! Shutting down sensor data processing thread.")
 			time.Sleep(time.Duration(1) * time.Second)
 			return // quit
