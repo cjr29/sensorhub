@@ -7,15 +7,12 @@ import (
 	"time"
 )
 
-func monitorWiFi(ctx context.Context, wg *sync.WaitGroup, stopBackground chan struct{}) {
+func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
 			logger.Debug("!!!!! Shutting down Wi-Fi monitoring thread.")
-			return // quit
-		case <-stopBackground:
-			logger.Debug("!!!!! Stopping Wi-Fi monitoring thread.")
 			return // quit
 		default:
 			amt := 360 // seconds delay between checks
