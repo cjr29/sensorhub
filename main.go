@@ -86,7 +86,7 @@ func main() {
 		case syscall.SIGINT, syscall.SIGTERM:
 			logger.Debug("!!!!! SIGINT/SIGTERM received by main thread. Stopping background processing.")
 			// Give workers time to exit
-			cancel()
+			// cancel()
 			wg.Wait()
 			logger.Info("!!!!! All background processing has stopped.")
 			logger.Info("!!!!! Sensor Hub stopped")
