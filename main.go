@@ -50,14 +50,16 @@ func main() {
 	wg.Add(workers)
 	logger.Info("Starting background processes")
 	// Start the background processing threads now that we are connected to WiFi
-	go processSensorData(ctx, &wg)    // Background thread to process sensor data
-	go restService(ctx, &wg)          // Background thread to log that the REST service is still running
-	go removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
-	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
+	stopBackground := make(chan struct{})          // signal channel to background processes for halting (no payload)
+	go processSensorData(ctx, &wg, stopBackground) // Background thread to process sensor data
+	go restService(ctx, &wg)                       // Background thread to log that the REST service is still running
+	go removeExpiredSensors(ctx, &wg)              // Background thread to process expired sensors
+	go monitorWiFi(ctx, &wg, stopBackground)       // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	logger.Info("Sensor Hub setup complete.")
 
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
+
 	for {
 		sig := <-sigCh
 		switch sig {
