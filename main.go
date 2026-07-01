@@ -75,17 +75,17 @@ func main() {
 			logger.Debug("!!!!! SIGINT/SIGTERM received by main thread. Stopping background processing.")
 			// Give workers time to exit
 			stop := make(chan struct{})
-			go func() {
-				close(stop)
-				wg.Wait()
-			}()
-			select {
-			case <-stop:
-				logger.Info("!!!!! All background processing has stopped.")
-				logger.Info("!!!!! Sensor Hub stopped")
-			case <-time.After(10 * time.Second):
-				logger.Info("!!!!! Shutdown timed out. Exiting.")
-			}
+			// go func() {
+			close(stop)
+			wg.Wait()
+			// }()
+			// select {
+			// case <-stop:
+			logger.Info("!!!!! All background processing has stopped.")
+			logger.Info("!!!!! Sensor Hub stopped")
+			// case <-time.After(10 * time.Second):
+			// 	logger.Info("!!!!! Shutdown timed out. Exiting.")
+			// }
 		}
 	}
 }
