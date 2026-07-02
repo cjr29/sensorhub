@@ -94,8 +94,8 @@ func main() {
 				}
 				// Stay in signal loop, don't return to main thread
 			}
-		case <-time.After(250 * time.Millisecond):
-			// keep loop responsive; or omit if you’re fine blocking on channels
+		case <-time.After(10 * time.Second):
+			// keep loop responsive
 		}
 	}
 }
