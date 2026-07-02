@@ -69,11 +69,11 @@ func main() {
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit")
 			wg.Wait()
-			logger.Debug("all goroutines halted; exiting")
+			logger.Debug("!!!!! All background processing halted. Exiting SensorHub")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
 			wg.Wait()
-			logger.Debug("all goroutines halted; exiting")
+			logger.Debug("!!!!! All background processing halted. Exiting SensorHub")
 		case syscall.SIGHUP:
 			// watch for log rotations and reopen log
 			logger.Debug("SIGHUP received by main thread.")
