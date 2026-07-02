@@ -44,14 +44,11 @@ func main() {
 	const workers = 4 // 4 background processes
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer cancel()
-
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-
-	logger.Info("Starting background processes")
-	// Start the background processing threads now that we are connected to WiFi
 	var wg sync.WaitGroup
 	wg.Add(4)
+	logger.Info("Starting background processes")
+	// Start the background processing threads now that we are connected to WiFi
+
 	go func() {
 		defer wg.Done()
 		processSensorData(ctx) // Background thread to process sensor data
@@ -69,6 +66,10 @@ func main() {
 		monitorWiFi(ctx) // Background thread to monitor Wi-Fi connection and handle setup if needed
 	}()
 
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	defer signal.Stop(sigCh)
+
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
 		sig := <-sigCh
@@ -83,14 +84,29 @@ func main() {
 				logger.Debug("Reopened log file after SIGHUP")
 			}
 			// Stay in signal loop, don't return to main thread
-		case syscall.SIGINT, syscall.SIGTERM:
-			logger.Debug("!!!!! SIGINT/SIGTERM received by main thread. Stopping background processing.")
+		case syscall.SIGINT:
+			logger.Debug("----- SIGINT received by main thread. Continue background processing.")
+
+		case syscall.SIGTERM:
+			logger.Debug("!!!!! SIGTERM received by main thread. Stopping background processing.")
 			// Give workers time to exit
-			// cancel()
-			wg.Wait()
-			logger.Info("!!!!! All background processing has stopped.")
-			logger.Info("!!!!! Sensor Hub stopped")
-			return
+			cancel()
+			done := make(chan struct{})
+			go func() {
+				wg.Wait()
+				close(done)
+			}()
+
+			select {
+			case <-done:
+				logger.Info("!!!!! All background processing has stopped.")
+				logger.Info("!!!!! Sensor Hub stopped")
+				return
+			case <-time.After(10 * time.Second):
+				logger.Info("!!!!! Timeout waiting for background processing to stop.")
+				logger.Info("!!!!! Sensor Hub stopped")
+				return
+			}
 		}
 	}
 }
