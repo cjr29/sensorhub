@@ -4,12 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -87,23 +91,47 @@ func restService(ctx context.Context, wg *sync.WaitGroup) {
 	// if v := os.Getenv("PORT"); v != "" {
 	// 	addr = ":" + v
 	// }
-	logger.Debug(fmt.Sprintf("Listening on %s", addr))
-	err = http.ListenAndServe(addr, r)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Error listening on port %s: %s", addr, err))
-	}
+	// logger.Debug(fmt.Sprintf("Listening on %s", addr))
+	// err = http.ListenAndServe(addr, r)
+	// if err != nil {
+	// 	logger.Error(fmt.Sprintf("Error listening on port %s: %s", addr, err))
+	// }
 
-	for {
-		select {
-		case <-ctx.Done():
-			logger.Debug("!!!!! REST Service shutting down...")
-			_ = db.Close()
-			return
-		default:
-			// do work
-			time.Sleep(200 * time.Millisecond)
-		}
+	server := &http.Server{
+		Addr:    addr,
+		Handler: r,
 	}
+	go func() {
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			logger.Error(fmt.Sprintf("REST HTTP server error: %v", err))
+		}
+		logger.Debug("Stopped serving new REST connections.")
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownRelease()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Error(fmt.Sprintf("HTTP shutdown error: %v", err))
+	}
+	logger.Debug("HTTP REST Server graceful shutdown complete.")
+
+	// for {
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		logger.Debug("!!!!! REST Service shutting down...")
+
+	// 		_ = db.Close()
+	// 		return
+	// 	default:
+	// 		// do work
+	// 		time.Sleep(200 * time.Millisecond)
+	// 	}
+	// }
 }
 
 // --- handlers ---
