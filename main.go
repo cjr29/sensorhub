@@ -43,7 +43,7 @@ func main() {
 	/********  WiFi Configured, proceed with processing *********************************/
 
 	// Start the background processing threads now that we are connected to WiFi
-	logger.Info("Starting background processes")
+	logger.Info(">>>>> Starting background processes")
 	wg.Add(4)
 	defer wg.Done()
 	go processSensorData(ctx, &wg)    // Background thread to process sensor data
@@ -67,13 +67,13 @@ func main() {
 		switch sig {
 		case syscall.SIGTERM:
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
-			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit")
+			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
 			wg.Wait()
-			logger.Debug("!!!!! All background processing halted. Exiting SensorHub")
+			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
 			wg.Wait()
-			logger.Debug("!!!!! All background processing halted. Exiting SensorHub")
+			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGHUP:
 			// watch for log rotations and reopen log
 			logger.Debug("SIGHUP received by main thread.")
@@ -86,43 +86,3 @@ func main() {
 		}
 	}
 }
-
-// for {
-// 	sig := <-sigCh
-// 	switch sig {
-// 	case syscall.SIGHUP:
-// 		// watch for log rotations and reopen log
-// 		logger.Debug("SIGHUP received by main thread.")
-// 		// reopen log file after logrotate signal received
-// 		if err := logFh.Reopen(logFile); err != nil {
-// 			logger.Error("Failed to reopen log file", "err", err)
-// 		} else {
-// 			logger.Debug("Reopened log file after SIGHUP")
-// 		}
-// 		// Stay in signal loop, don't return to main thread
-// 	case syscall.SIGINT:
-// 		logger.Debug("----- SIGINT received by main thread. Continue background processing.")
-
-// 	case syscall.SIGTERM:
-// 		logger.Debug("!!!!! SIGTERM received by main thread. Stopping background processing.")
-// 		// Give workers time to exit
-// 		cancel()
-// 		done := make(chan struct{})
-// 		go func() {
-// 			wg.Wait()
-// 			close(done)
-// 		}()
-
-// 		select {
-// 		case <-done:
-// 			logger.Info("!!!!! All background processing has stopped.")
-// 			logger.Info("!!!!! Sensor Hub stopped")
-// 			return
-// 		case <-time.After(10 * time.Second):
-// 			logger.Info("!!!!! Timeout waiting for background processing to stop.")
-// 			logger.Info("!!!!! Sensor Hub stopped")
-// 			return
-// 		}
-// 	}
-// }
-// }

@@ -42,26 +42,6 @@ type Sensor struct {
 	Active      int     `json:"ACTIVE"`
 }
 
-// func restService(ctx context.Context) {
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			logger.Info("!!!!! Shutting down REST service thread.")
-// 			return // quit
-// 		default:
-// 			// amt := 3600 // seconds delay
-// 			// time.Sleep(time.Duration(amt) * time.Second)
-// 			// logger.Info(fmt.Sprintf("REST service still running (checked every %d seconds) ...", amt))
-// 			logger.Debug("Starting REST Service.")
-// 			restServiceHandler()
-// 		}
-// 	}
-// }
-
-// weatherREST.go
-// REST API: GET /sensors, GET /sensor/{id}, PATCH /sensor/rename, PATCH /sensor/full
-// Uses: modernc.org/sqlite + database/sql
-
 func restService(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	esc := url.PathEscape(dbPath)
@@ -88,14 +68,6 @@ func restService(ctx context.Context, wg *sync.WaitGroup) {
 	r.Patch("/sensor/full", handlePatchSensorFull)
 
 	addr := restPort
-	// if v := os.Getenv("PORT"); v != "" {
-	// 	addr = ":" + v
-	// }
-	// logger.Debug(fmt.Sprintf("Listening on %s", addr))
-	// err = http.ListenAndServe(addr, r)
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Error listening on port %s: %s", addr, err))
-	// }
 
 	server := &http.Server{
 		Addr:    addr,
@@ -119,19 +91,6 @@ func restService(ctx context.Context, wg *sync.WaitGroup) {
 		logger.Error(fmt.Sprintf("HTTP shutdown error: %v", err))
 	}
 	logger.Debug("!!!!! HTTP REST Server graceful shutdown complete.")
-
-	// for {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		logger.Debug("!!!!! REST Service shutting down...")
-
-	// 		_ = db.Close()
-	// 		return
-	// 	default:
-	// 		// do work
-	// 		time.Sleep(200 * time.Millisecond)
-	// 	}
-	// }
 }
 
 // --- handlers ---

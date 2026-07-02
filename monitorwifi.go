@@ -22,8 +22,6 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
 				logger.Debug("Internet access confirmed")
 			} else {
 				logger.Debug("Only localhost access available. No Internet.")
-				// Start hotspot to configure wifi
-				// loginWiFiViaHotspot()
 			}
 			time.Sleep(time.Duration(amt) * time.Second)
 		}
