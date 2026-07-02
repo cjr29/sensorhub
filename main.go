@@ -43,25 +43,14 @@ func main() {
 	/********  WiFi Configured, proceed with processing *********************************/
 
 	// Start the background processing threads now that we are connected to WiFi
-	const workers = 4 // 4 background processes
-	wg.Add(4)
 	logger.Info("Starting background processes")
-
+	wg.Add(4)
 	go func() {
 		defer wg.Done()
-		processSensorData(ctx, &wg) // Background thread to process sensor data
-	}()
-	go func() {
-		defer wg.Done()
-		restService(ctx, &wg) // Background thread to log that the REST service is still running
-	}()
-	go func() {
-		defer wg.Done()
+		processSensorData(ctx, &wg)    // Background thread to process sensor data
+		restService(ctx, &wg)          // Background thread to log that the REST service is still running
 		removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
-	}()
-	go func() {
-		defer wg.Done()
-		monitorWiFi(ctx, &wg) // Background thread to monitor Wi-Fi connection and handle setup if needed
+		monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 	}()
 
 	// Handle other signals while waiting for goroutines to halt.
@@ -77,24 +66,24 @@ func main() {
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
 		select {
-		case sig := <-sig:
+		case s := <-sig:
 			// Handle "other" signals without terminating immediately.
 			logger.Debug(fmt.Sprintf("received signal: %v", sig))
-			if sig == syscall.SIGTERM {
+			if s == syscall.SIGTERM {
 				// SIGTERM is handled by the context cancellation above, so just log and continue.
 				logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit")
 				// Received SIGTERM, Wait for workers to halt.
 				wg.Wait()
 				logger.Debug("all goroutines halted; exiting")
 			}
-			if sig == syscall.SIGINT {
+			if s == syscall.SIGINT {
 				// If you want Ctrl+C to also initiate shutdown:
 				// stop() will cancel ctx, but only if ctx is based on SIGTERM.
 				// You can instead create a ctx that cancels on both SIGTERM and SIGINT.
 				//
 				// For now, just log and continue.
 			}
-			if sig == syscall.SIGHUP {
+			if s == syscall.SIGHUP {
 				// watch for log rotations and reopen log
 				logger.Debug("SIGHUP received by main thread.")
 				// reopen log file after logrotate signal received
