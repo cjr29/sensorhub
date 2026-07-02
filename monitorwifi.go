@@ -3,17 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 )
 
-func monitorWiFi(ctx context.Context) {
+func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
 			logger.Debug("!!!!! Shutting down Wi-Fi monitoring thread.")
 			return // quit
 		default:
-			amt := 360 // seconds delay between checks
+			amt := 30 // seconds delay between checks
 			logger.Debug(fmt.Sprintf("Check WiFi availability every %d seconds", amt))
 			time.Sleep(time.Duration(amt) * time.Second)
 			// See if Internet (remote) access is available

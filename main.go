@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 	defer stop()
 	var wg sync.WaitGroup
 
@@ -49,19 +49,19 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		processSensorData(ctx) // Background thread to process sensor data
+		processSensorData(ctx, &wg) // Background thread to process sensor data
 	}()
 	go func() {
 		defer wg.Done()
-		restService(ctx) // Background thread to log that the REST service is still running
+		restService(ctx, &wg) // Background thread to log that the REST service is still running
 	}()
 	go func() {
 		defer wg.Done()
-		removeExpiredSensors(ctx) // Background thread to process expired sensors
+		removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
 	}()
 	go func() {
 		defer wg.Done()
-		monitorWiFi(ctx) // Background thread to monitor Wi-Fi connection and handle setup if needed
+		monitorWiFi(ctx, &wg) // Background thread to monitor Wi-Fi connection and handle setup if needed
 	}()
 
 	// Handle other signals while waiting for goroutines to halt.

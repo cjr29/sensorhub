@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -57,7 +58,8 @@ type Sensor struct {
 // REST API: GET /sensors, GET /sensor/{id}, PATCH /sensor/rename, PATCH /sensor/full
 // Uses: modernc.org/sqlite + database/sql
 
-func restService(ctx context.Context) {
+func restService(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
 	esc := url.PathEscape(dbPath)
 	dsn := fmt.Sprintf("file:%s?mode=rw", esc)
 	var err error
@@ -94,7 +96,7 @@ func restService(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debug("REST Service shutting down...")
+			logger.Debug("!!!!! REST Service shutting down...")
 			_ = db.Close()
 			return
 		default:

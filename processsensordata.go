@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -37,7 +38,8 @@ type SensorPayload map[string]any
 // 	}
 // }
 
-func processSensorData(ctx context.Context) {
+func processSensorData(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
 	var err error
 	db, err = initDB(dbPath)
 	if err != nil {
@@ -76,7 +78,7 @@ func processSensorData(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debug("Sensor Data Processing shutting down...")
+			logger.Debug("!!!!! Sensor Data Processing shutting down...")
 			_ = db.Close()
 			client.Disconnect(250)
 			return
