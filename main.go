@@ -76,11 +76,6 @@ func main() {
 
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
-		// Stop condition: SIGTERM has arrived -> ctx canceled.
-		if ctx.Err() != nil {
-			logger.Debug("received SIGTERM; waiting for goroutines to exit")
-			break
-		}
 		select {
 		case sig := <-sig:
 			// Handle "other" signals without terminating immediately.
@@ -88,7 +83,9 @@ func main() {
 			if sig == syscall.SIGTERM {
 				// SIGTERM is handled by the context cancellation above, so just log and continue.
 				logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit")
-				break
+				// Received SIGTERM, Wait for workers to halt.
+				wg.Wait()
+				logger.Debug("all goroutines halted; exiting")
 			}
 			if sig == syscall.SIGINT {
 				// If you want Ctrl+C to also initiate shutdown:
@@ -112,10 +109,6 @@ func main() {
 			// keep loop responsive; or omit if you’re fine blocking on channels
 		}
 	}
-
-	// Received SIGTERM, Wait for workers to halt.
-	wg.Wait()
-	logger.Debug("all goroutines halted; exiting")
 }
 
 // for {
