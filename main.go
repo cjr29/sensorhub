@@ -52,48 +52,37 @@ func main() {
 	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	// Handle other signals while waiting for goroutines to halt.
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig,
+	stopChannel := make(chan os.Signal, 1)
+	signal.Notify(stopChannel,
 		syscall.SIGTERM,
 		syscall.SIGINT,
 		syscall.SIGHUP,
 		// add more signals you care about
 	)
-	defer signal.Stop(sig)
+	defer signal.Stop(stopChannel)
 
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
-		select {
-		case s := <-sig:
-			// Handle "other" signals without terminating immediately.
-			logger.Debug(fmt.Sprintf("received signal: %v", sig))
-			if s == syscall.SIGTERM {
-				// SIGTERM is handled by the context cancellation above, so just log and continue.
-				logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit")
-				// Received SIGTERM, Wait for workers to halt.
-				wg.Wait()
-				logger.Debug("all goroutines halted; exiting")
+		sig := <-stopChannel
+		switch sig {
+		case syscall.SIGTERM:
+			// SIGTERM is handled by the context cancellation above, so just log and continue.
+			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit")
+			wg.Wait()
+			logger.Debug("all goroutines halted; exiting")
+		case syscall.SIGINT:
+			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
+			wg.Wait()
+			logger.Debug("all goroutines halted; exiting")
+		case syscall.SIGHUP:
+			// watch for log rotations and reopen log
+			logger.Debug("SIGHUP received by main thread.")
+			// reopen log file after logrotate signal received
+			if err := logFh.Reopen(logFile); err != nil {
+				logger.Error("Failed to reopen log file", "err", err)
+			} else {
+				logger.Debug("Reopened log file after SIGHUP")
 			}
-			if s == syscall.SIGINT {
-				// If you want Ctrl+C to also initiate shutdown:
-				// stop() will cancel ctx, but only if ctx is based on SIGTERM.
-				// You can instead create a ctx that cancels on both SIGTERM and SIGINT.
-				//
-				// For now, just log and continue.
-			}
-			if s == syscall.SIGHUP {
-				// watch for log rotations and reopen log
-				logger.Debug("SIGHUP received by main thread.")
-				// reopen log file after logrotate signal received
-				if err := logFh.Reopen(logFile); err != nil {
-					logger.Error("Failed to reopen log file", "err", err)
-				} else {
-					logger.Debug("Reopened log file after SIGHUP")
-				}
-				// Stay in signal loop, don't return to main thread
-			}
-		case <-time.After(10 * time.Second):
-			// keep loop responsive
 		}
 	}
 }
