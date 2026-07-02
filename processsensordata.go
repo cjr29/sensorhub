@@ -22,22 +22,6 @@ var (
 
 type SensorPayload map[string]any
 
-// func processSensorData(ctx context.Context) {
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			logger.Debug("!!!!! Shutting down sensor data processing thread.")
-// 			return // quit
-// 		default:
-// 			// amt := 6 // seconds delay
-// 			// time.Sleep(time.Duration(amt) * time.Second)
-// 			// logger.Info(fmt.Sprintf("Processing sensor data every %d seconds", amt))
-// 			logger.Debug("Starting Sensor Processing Service.")
-// 			processSensorDataHandler()
-// 		}
-// 	}
-// }
-
 func processSensorData(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var err error

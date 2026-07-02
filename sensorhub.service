@@ -12,7 +12,7 @@ WorkingDirectory=/var/lib/sensorhub
 ExecStart=/usr/local/bin/sensorhub/sensorhub
 Restart=on-failure
 RestartSec=5
-TimeoutStopSec=10
+TimeoutStopSec=15
 
 [Install]
 WantedBy=multi-user.target
