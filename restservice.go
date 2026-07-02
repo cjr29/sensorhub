@@ -105,7 +105,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup) {
 		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			logger.Error(fmt.Sprintf("REST HTTP server error: %v", err))
 		}
-		logger.Debug("Stopped serving new REST connections.")
+		logger.Debug("!!!!! Stopped serving new REST connections.")
 	}()
 
 	sigChan := make(chan os.Signal, 1)
@@ -118,7 +118,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup) {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error(fmt.Sprintf("HTTP shutdown error: %v", err))
 	}
-	logger.Debug("HTTP REST Server graceful shutdown complete.")
+	logger.Debug("!!!!! HTTP REST Server graceful shutdown complete.")
 
 	// for {
 	// 	select {

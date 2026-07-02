@@ -15,9 +15,8 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
 			logger.Debug("!!!!! Shutting down Wi-Fi monitoring thread.")
 			return // quit
 		default:
-			amt := 30 // seconds delay between checks
+			amt := 10 // seconds delay between checks
 			logger.Debug(fmt.Sprintf("Check WiFi availability every %d seconds", amt))
-			time.Sleep(time.Duration(amt) * time.Second)
 			// See if Internet (remote) access is available
 			if hasInternet() {
 				logger.Debug("Internet access confirmed")
@@ -26,7 +25,7 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
 				// Start hotspot to configure wifi
 				// loginWiFiViaHotspot()
 			}
-
+			time.Sleep(time.Duration(amt) * time.Second)
 		}
 	}
 }
