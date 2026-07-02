@@ -67,8 +67,6 @@ func restService(ctx context.Context) {
 	}
 	defer db.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	if err := db.PingContext(ctx); err != nil {
 		logger.Error(fmt.Sprintf("Unable to ping sqlite database: %v", err))
 	}
