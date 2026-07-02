@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	// Create a context that will be canceled SIGTERM signal is received
+	// Create a context that will be canceled when SIGTERM signal is received
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer stop()
 	var wg sync.WaitGroup
@@ -65,13 +65,14 @@ func main() {
 	}()
 
 	// Handle other signals while waiting for goroutines to halt.
-	other := make(chan os.Signal, 1)
-	signal.Notify(other,
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig,
+		syscall.SIGTERM,
 		syscall.SIGINT,
 		syscall.SIGHUP,
 		// add more signals you care about
 	)
-	defer signal.Stop(other)
+	defer signal.Stop(sig)
 
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
@@ -81,10 +82,14 @@ func main() {
 			break
 		}
 		select {
-		case sig := <-other:
+		case sig := <-sig:
 			// Handle "other" signals without terminating immediately.
 			logger.Debug(fmt.Sprintf("received signal: %v", sig))
-			// Example: on SIGINT you might cancel as well:
+			if sig == syscall.SIGTERM {
+				// SIGTERM is handled by the context cancellation above, so just log and continue.
+				logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit")
+				break
+			}
 			if sig == syscall.SIGINT {
 				// If you want Ctrl+C to also initiate shutdown:
 				// stop() will cancel ctx, but only if ctx is based on SIGTERM.
@@ -103,12 +108,12 @@ func main() {
 				}
 				// Stay in signal loop, don't return to main thread
 			}
-			// case <-time.After(250 * time.Millisecond):
-			// 	// keep loop responsive; or omit if you’re fine blocking on channels
+		case <-time.After(250 * time.Millisecond):
+			// keep loop responsive; or omit if you’re fine blocking on channels
 		}
 	}
 
-	// 4) Wait for workers to halt.
+	// Received SIGTERM, Wait for workers to halt.
 	wg.Wait()
 	logger.Debug("all goroutines halted; exiting")
 }

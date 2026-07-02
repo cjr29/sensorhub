@@ -96,7 +96,6 @@ func restService(ctx context.Context) {
 		case <-ctx.Done():
 			logger.Debug("REST Service shutting down...")
 			_ = db.Close()
-			client.Disconnect(250)
 			return
 		default:
 			// do work
