@@ -11,6 +11,10 @@ import (
 )
 
 func main() {
+	// Create a context that will be canceled SIGTERM signal is received
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+	defer stop()
+	var wg sync.WaitGroup
 
 	configureLogging()
 
@@ -38,16 +42,10 @@ func main() {
 	/************************************************************************************/
 	/********  WiFi Configured, proceed with processing *********************************/
 
-	// signals: SIGINT/SIGTERM -> shutdown, SIGHUP -> reopen log
-	logger.Debug("Set up channel to catch shutdown signals")
-	// Context canceled on SIGTERM (systemd stop)
+	// Start the background processing threads now that we are connected to WiFi
 	const workers = 4 // 4 background processes
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
-	defer cancel()
-	var wg sync.WaitGroup
 	wg.Add(4)
 	logger.Info("Starting background processes")
-	// Start the background processing threads now that we are connected to WiFi
 
 	go func() {
 		defer wg.Done()
@@ -66,47 +64,91 @@ func main() {
 		monitorWiFi(ctx) // Background thread to monitor Wi-Fi connection and handle setup if needed
 	}()
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	defer signal.Stop(sigCh)
+	// Handle other signals while waiting for goroutines to halt.
+	other := make(chan os.Signal, 1)
+	signal.Notify(other,
+		syscall.SIGINT,
+		syscall.SIGHUP,
+		// add more signals you care about
+	)
+	defer signal.Stop(other)
 
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
-		sig := <-sigCh
-		switch sig {
-		case syscall.SIGHUP:
-			// watch for log rotations and reopen log
-			logger.Debug("SIGHUP received by main thread.")
-			// reopen log file after logrotate signal received
-			if err := logFh.Reopen(logFile); err != nil {
-				logger.Error("Failed to reopen log file", "err", err)
-			} else {
-				logger.Debug("Reopened log file after SIGHUP")
+		// Stop condition: SIGTERM has arrived -> ctx canceled.
+		if ctx.Err() != nil {
+			logger.Debug("received SIGTERM; waiting for goroutines to exit")
+			break
+		}
+		select {
+		case sig := <-other:
+			// Handle "other" signals without terminating immediately.
+			logger.Debug(fmt.Sprintf("received signal: %v", sig))
+			// Example: on SIGINT you might cancel as well:
+			if sig == syscall.SIGINT {
+				// If you want Ctrl+C to also initiate shutdown:
+				// stop() will cancel ctx, but only if ctx is based on SIGTERM.
+				// You can instead create a ctx that cancels on both SIGTERM and SIGINT.
+				//
+				// For now, just log and continue.
 			}
-			// Stay in signal loop, don't return to main thread
-		case syscall.SIGINT:
-			logger.Debug("----- SIGINT received by main thread. Continue background processing.")
-
-		case syscall.SIGTERM:
-			logger.Debug("!!!!! SIGTERM received by main thread. Stopping background processing.")
-			// Give workers time to exit
-			cancel()
-			done := make(chan struct{})
-			go func() {
-				wg.Wait()
-				close(done)
-			}()
-
-			select {
-			case <-done:
-				logger.Info("!!!!! All background processing has stopped.")
-				logger.Info("!!!!! Sensor Hub stopped")
-				return
-			case <-time.After(10 * time.Second):
-				logger.Info("!!!!! Timeout waiting for background processing to stop.")
-				logger.Info("!!!!! Sensor Hub stopped")
-				return
+			if sig == syscall.SIGHUP {
+				// watch for log rotations and reopen log
+				logger.Debug("SIGHUP received by main thread.")
+				// reopen log file after logrotate signal received
+				if err := logFh.Reopen(logFile); err != nil {
+					logger.Error("Failed to reopen log file", "err", err)
+				} else {
+					logger.Debug("Reopened log file after SIGHUP")
+				}
+				// Stay in signal loop, don't return to main thread
 			}
+			// case <-time.After(250 * time.Millisecond):
+			// 	// keep loop responsive; or omit if you’re fine blocking on channels
 		}
 	}
+
+	// 4) Wait for workers to halt.
+	wg.Wait()
+	logger.Debug("all goroutines halted; exiting")
 }
+
+// for {
+// 	sig := <-sigCh
+// 	switch sig {
+// 	case syscall.SIGHUP:
+// 		// watch for log rotations and reopen log
+// 		logger.Debug("SIGHUP received by main thread.")
+// 		// reopen log file after logrotate signal received
+// 		if err := logFh.Reopen(logFile); err != nil {
+// 			logger.Error("Failed to reopen log file", "err", err)
+// 		} else {
+// 			logger.Debug("Reopened log file after SIGHUP")
+// 		}
+// 		// Stay in signal loop, don't return to main thread
+// 	case syscall.SIGINT:
+// 		logger.Debug("----- SIGINT received by main thread. Continue background processing.")
+
+// 	case syscall.SIGTERM:
+// 		logger.Debug("!!!!! SIGTERM received by main thread. Stopping background processing.")
+// 		// Give workers time to exit
+// 		cancel()
+// 		done := make(chan struct{})
+// 		go func() {
+// 			wg.Wait()
+// 			close(done)
+// 		}()
+
+// 		select {
+// 		case <-done:
+// 			logger.Info("!!!!! All background processing has stopped.")
+// 			logger.Info("!!!!! Sensor Hub stopped")
+// 			return
+// 		case <-time.After(10 * time.Second):
+// 			logger.Info("!!!!! Timeout waiting for background processing to stop.")
+// 			logger.Info("!!!!! Sensor Hub stopped")
+// 			return
+// 		}
+// 	}
+// }
+// }
