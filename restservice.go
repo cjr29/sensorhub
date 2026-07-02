@@ -40,27 +40,27 @@ type Sensor struct {
 	Active      int     `json:"ACTIVE"`
 }
 
-func restService(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			logger.Info("!!!!! Shutting down REST service thread.")
-			return // quit
-		default:
-			// amt := 3600 // seconds delay
-			// time.Sleep(time.Duration(amt) * time.Second)
-			// logger.Info(fmt.Sprintf("REST service still running (checked every %d seconds) ...", amt))
-			logger.Debug("Starting REST Service.")
-			restServiceHandler()
-		}
-	}
-}
+// func restService(ctx context.Context) {
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			logger.Info("!!!!! Shutting down REST service thread.")
+// 			return // quit
+// 		default:
+// 			// amt := 3600 // seconds delay
+// 			// time.Sleep(time.Duration(amt) * time.Second)
+// 			// logger.Info(fmt.Sprintf("REST service still running (checked every %d seconds) ...", amt))
+// 			logger.Debug("Starting REST Service.")
+// 			restServiceHandler()
+// 		}
+// 	}
+// }
 
 // weatherREST.go
 // REST API: GET /sensors, GET /sensor/{id}, PATCH /sensor/rename, PATCH /sensor/full
 // Uses: modernc.org/sqlite + database/sql
 
-func restServiceHandler() {
+func restService(ctx context.Context) {
 	esc := url.PathEscape(dbPath)
 	dsn := fmt.Sprintf("file:%s?mode=rw", esc)
 	var err error
