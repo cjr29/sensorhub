@@ -79,6 +79,7 @@ func processSensorData(ctx context.Context) {
 			logger.Debug("Sensor Data Processing shutting down...")
 			_ = db.Close()
 			client.Disconnect(250)
+			return
 		default:
 			// do work
 			time.Sleep(200 * time.Millisecond)
