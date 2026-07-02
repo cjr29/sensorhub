@@ -7,11 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -96,28 +93,18 @@ func restService(ctx context.Context) {
 		logger.Error(fmt.Sprintf("Error listening on port %s: %s", addr, err))
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	<-ctx.Done()
-
-	logger.Debug("REST Service shutting down...")
-	_ = db.Close()
-
-	timeout := 5 * time.Second
-	disconnectCtx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	done := make(chan struct{})
-	go func() {
-		client.Disconnect(250)
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-disconnectCtx.Done():
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Debug("REST Service shutting down...")
+			_ = db.Close()
+			client.Disconnect(250)
+			return
+		default:
+			// do work
+			time.Sleep(200 * time.Millisecond)
+		}
 	}
-	logger.Debug("REST Service stopped.")
 }
 
 // --- handlers ---
