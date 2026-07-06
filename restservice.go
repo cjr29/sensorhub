@@ -107,6 +107,7 @@ func handleGetSensors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, rows)
+	logger.Debug(fmt.Sprintf("Returned %d sensors", len(rows)))
 }
 
 func handleGetSensorID(w http.ResponseWriter, r *http.Request) {
