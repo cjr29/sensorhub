@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const AppVersion = "0.1.0"
+
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
@@ -20,6 +22,7 @@ func main() {
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
+	logger.Info("App Version: " + AppVersion)
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
 		// WiFi not configured. Use hotspot configuration.
