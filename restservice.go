@@ -244,6 +244,7 @@ func handleHostRename(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate hostname
+	logger.Debug(fmt.Sprintf("Validating hostname: %s", req.HOSTNAME))
 	if err := validHostname(req.HOSTNAME); err != nil {
 		w.WriteHeader(http.StatusNoContent)
 		writeJSON(w, http.StatusNoContent, map[string]any{"error": fmt.Sprintf("Invalid hostname: %v", err)})
