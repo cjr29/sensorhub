@@ -53,7 +53,7 @@ func setHostname(hostname string) error {
 	}
 
 	// Force the kernel to update its idea of the hostname immediately.
-	cmd = exec.Command("sudo", "hostname", hostname)
+	cmd = exec.Command("sudo", "systemctl", "reboot")
 	out, err = cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("hostname command failed: %w; output: %s", err, strings.TrimSpace(string(out)))
