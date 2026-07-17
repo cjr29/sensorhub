@@ -232,7 +232,7 @@ func handlePatchSensorFull(w http.ResponseWriter, r *http.Request) {
 }
 
 type patchHostnameReq struct {
-	HOSTNAME string `json:"sensorhub"`
+	HOSTNAME string `json:"HOSTNAME"`
 }
 
 func handleHostRename(w http.ResponseWriter, r *http.Request) {
