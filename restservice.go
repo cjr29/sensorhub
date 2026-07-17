@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -42,7 +43,7 @@ type Sensor struct {
 	Active      int     `json:"ACTIVE"`
 }
 
-func restService(ctx context.Context, wg *sync.WaitGroup) {
+func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 	defer wg.Done()
 	esc := url.PathEscape(dbPath)
 	dsn := fmt.Sprintf("file:%s?mode=rw", esc)

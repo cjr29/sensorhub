@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 )
 
-func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
+func monitorWiFi(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 	defer wg.Done()
 	for {
 		select {

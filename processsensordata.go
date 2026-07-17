@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"sync"
@@ -22,7 +23,7 @@ var (
 
 type SensorPayload map[string]any
 
-func processSensorData(ctx context.Context, wg *sync.WaitGroup) {
+func processSensorData(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 	defer wg.Done()
 	var err error
 	db, err = initDB(dbPath)

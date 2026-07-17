@@ -49,10 +49,10 @@ func main() {
 	logger.Info(">>>>> Starting background processes")
 	wg.Add(4)
 	defer wg.Done()
-	go processSensorData(ctx, &wg)    // Background thread to process sensor data
-	go restService(ctx, &wg)          // Background thread to log that the REST service is still running
-	go removeExpiredSensors(ctx, &wg) // Background thread to process expired sensors
-	go monitorWiFi(ctx, &wg)          // Background thread to monitor Wi-Fi connection and handle setup if needed
+	go processSensorData(ctx, &wg, logger)    // Background thread to process sensor data
+	go restService(ctx, &wg, logger)          // Background thread to log that the REST service is still running
+	go removeExpiredSensors(ctx, &wg, logger) // Background thread to process expired sensors
+	go monitorWiFi(ctx, &wg, logger)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	// Handle other signals while waiting for goroutines to halt.
 	stopChannel := make(chan os.Signal, 1)

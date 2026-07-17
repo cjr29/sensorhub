@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 )
 
-func removeExpiredSensors(ctx context.Context, wg *sync.WaitGroup) {
+func removeExpiredSensors(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 	defer wg.Done()
 	for {
 		select {
