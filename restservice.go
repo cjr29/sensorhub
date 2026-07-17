@@ -66,7 +66,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup) {
 	r.Get("/sensor/{id}", handleGetSensorID)
 	r.Patch("/sensor/rename", handlePatchSensorRename)
 	r.Patch("/sensor/full", handlePatchSensorFull)
-	r.Patch("/sensorhub", handleHostRename)
+	r.Patch("/hostname", handleHostRename)
 
 	addr := restPort
 
