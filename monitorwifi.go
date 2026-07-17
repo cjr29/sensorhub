@@ -12,7 +12,7 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debug("!!!!! Shutting down Wi-Fi monitoring thread.")
+			logger.Info("!!!!! Shutting down Wi-Fi monitoring thread.")
 			return // quit
 		default:
 			amt := 3600 // seconds delay between checks

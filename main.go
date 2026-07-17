@@ -37,9 +37,9 @@ func main() {
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
-		logger.Info("Internet access confirmed")
+		logger.Info("Initializing: Internet access confirmed")
 	} else {
-		logger.Info("Only localhost access available. No Internet.")
+		logger.Info("Initializing: Only localhost access available. No Internet.")
 	}
 
 	/************************************************************************************/
