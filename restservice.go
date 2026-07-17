@@ -247,6 +247,7 @@ func handleHostRename(w http.ResponseWriter, r *http.Request) {
 	if err := validHostname(req.HOSTNAME); err != nil {
 		w.WriteHeader(http.StatusNoContent)
 		writeJSON(w, http.StatusNoContent, map[string]any{"error": fmt.Sprintf("Invalid hostname: %v", err)})
+		logger.Error(fmt.Sprintf("Invalid hostname: %v", err))
 		return
 	}
 
@@ -254,6 +255,7 @@ func handleHostRename(w http.ResponseWriter, r *http.Request) {
 	if err := setHostname(req.HOSTNAME); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("Failed to set hostname: %v", err)})
+		logger.Error(fmt.Sprintf("Failed to set hostname: %v", err))
 		return
 	}
 
