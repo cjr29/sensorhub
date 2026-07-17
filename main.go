@@ -84,7 +84,7 @@ func main() {
 			if err := logFh.Reopen(logFile); err != nil {
 				logger.Error("Failed to reopen log file", "err", err)
 			} else {
-				logger.Debug("Reopened log file after SIGHUP")
+				logger.Info("Reopened log file after SIGHUP")
 			}
 		}
 	}

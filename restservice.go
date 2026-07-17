@@ -172,7 +172,7 @@ func handlePatchSensorRename(w http.ResponseWriter, r *http.Request) {
 
 	// Python returns: response + 200; message had literal {id}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"message":    "Sensor {id} updated",
+		"message":    fmt.Sprintf("Sensor %d updated", req.ID),
 		"SENSORNAME": req.SENSORNAME,
 	})
 }
