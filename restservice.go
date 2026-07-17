@@ -66,6 +66,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup) {
 	r.Get("/sensor/{id}", handleGetSensorID)
 	r.Patch("/sensor/rename", handlePatchSensorRename)
 	r.Patch("/sensor/full", handlePatchSensorFull)
+	r.Patch("/sensorhub", handleHostRename)
 
 	addr := restPort
 
@@ -151,7 +152,7 @@ func handlePatchSensorRename(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update only if exists (Python: reads then updates)
+	// Update only if exists
 	ok, err := sensorExists(r.Context(), req.ID)
 	if err != nil {
 		writeJSON(w, http.StatusNoContent, map[string]any{"error": "Database error"})
@@ -230,6 +231,38 @@ func handlePatchSensorFull(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type patchHostnameReq struct {
+	HOSTNAME string `json:"sensorhub"`
+}
+
+func handleHostRename(w http.ResponseWriter, r *http.Request) {
+	var req patchHostnameReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		writeJSON(w, http.StatusNoContent, map[string]any{"error": "JSON decode error"})
+		return
+	}
+
+	// Validate hostname
+	if err := validHostname(req.HOSTNAME); err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		writeJSON(w, http.StatusNoContent, map[string]any{"error": fmt.Sprintf("Invalid hostname: %v", err)})
+		return
+	}
+
+	// Set hostname
+	if err := setHostname(req.HOSTNAME); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("Failed to set hostname: %v", err)})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message":  "Hostname updated",
+		"HOSTNAME": req.HOSTNAME,
+	})
+}
+
 // --- DB helpers (avoid “read whole table then find”) ---
 
 func sensorExists(ctx context.Context, id int) (bool, error) {
@@ -246,7 +279,6 @@ func sensorExists(ctx context.Context, id int) (bool, error) {
 }
 
 func querySensorByIDAsMap(ctx context.Context, id int) (map[string]any, error) {
-	// SELECT * to preserve Python behavior of returning all columns as a map
 	q := fmt.Sprintf(`SELECT * FROM %s WHERE id = ?`, tableName)
 	row := db.QueryRowContext(ctx, q, id)
 

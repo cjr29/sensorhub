@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.1.0"
+const AppVersion = "0.1.1"
 
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
