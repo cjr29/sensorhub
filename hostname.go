@@ -89,12 +89,12 @@ func setHostname(hostname string) error {
 		return fmt.Errorf("hostnamectl failed: %w; output: %s", err, strings.TrimSpace(string(out)))
 	}
 
-	// Force the kernel to update its idea of the hostname immediately.
-	cmd = exec.Command("sudo", "systemctl", "reboot")
-	out, err = cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("hostname command failed: %w; output: %s", err, strings.TrimSpace(string(out)))
-	}
+	// // Force the kernel to update its idea of the hostname immediately.
+	// cmd = exec.Command("sudo", "systemctl", "reboot")
+	// out, err = cmd.CombinedOutput()
+	// if err != nil {
+	// 	return fmt.Errorf("hostname command failed: %w; output: %s", err, strings.TrimSpace(string(out)))
+	// }
 
 	return nil
 }
