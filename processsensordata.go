@@ -151,7 +151,6 @@ func ensureTable(db *sql.DB) error {
 
 func onMessage(c mqtt.Client, m mqtt.Message) {
 	topic := string(m.Topic())
-	logger.Debug(fmt.Sprintf("Received message on topic: %s", topic))
 	parts := strings.Split(topic, "/")
 	if len(parts) < 3 {
 		return
@@ -162,7 +161,7 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	sStation, err := getHostname()
 	if err != nil {
 		sStation = "UNKNOWNSTATION"
-		logger.Debug(fmt.Sprintf("Failed to retrieve hostname: %v, set to UNKNOWN", err))
+		logger.Debug(fmt.Sprintf("Failed to retrieve hostname: %v, set to UNKNOWNSTATION", err))
 	}
 	sWeather := parts[1]
 	sSensors := parts[2]
