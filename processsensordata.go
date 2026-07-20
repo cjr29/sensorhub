@@ -151,6 +151,7 @@ func ensureTable(db *sql.DB) error {
 
 func onMessage(c mqtt.Client, m mqtt.Message) {
 	topic := string(m.Topic())
+	logger.Debug(fmt.Sprintf("Received message on topic: %s", topic))
 	parts := strings.Split(topic, "/")
 	if len(parts) < 3 {
 		return
@@ -160,13 +161,14 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	// sStation := parts[1]
 	sStation, err := getHostname()
 	if err != nil {
-		sStation = "UNKNOWN"
+		sStation = "UNKNOWNSTATION"
 		logger.Debug(fmt.Sprintf("Failed to retrieve hostname: %v, set to UNKNOWN", err))
 	}
 	sWeather := parts[1]
 	sSensors := parts[2]
 
 	if sWeather != "weather" || sSensors != "sensors" {
+		logger.Debug(fmt.Sprintf("topic was not weather/sensors: %v", topic))
 		return
 	}
 
@@ -188,6 +190,7 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		curTemperature sql.NullFloat64
 		curHumidity    sql.NullFloat64
 		curSensorName  sql.NullString
+		curStation     sql.NullString
 		curLocation    sql.NullString
 		curDescription sql.NullString
 		curActive      sql.NullInt64
@@ -201,12 +204,10 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		sensorID,
 	)
 
-	// STATION is scanned into a dummy since we don't need the old one except Python used cur_station = results[0][??].
-	var dummyStation sql.NullString
 	err = row.Scan(
 		&curID, &curTime, &curSensorID, &curModel, &curChannel, &curBattery,
 		&curTemperature, &curHumidity, &curSensorName,
-		&dummyStation,
+		&curStation,
 		&curLocation, &curDescription, &curActive,
 	)
 
@@ -287,6 +288,7 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	_ = curModel
 	_ = curChannel
 	_ = curSensorName
+	_ = curStation
 	_ = curLocation
 	_ = curDescription
 	_ = curActive
