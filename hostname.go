@@ -4,31 +4,30 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
-
-	"golang.org/x/sys/unix"
 )
 
 var hostLabelRE = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$`)
 
-// HostnameUname returns the current system hostname using uname(2).
-func hostnameUname() (string, error) {
-	var uts unix.Utsname
-	if err := unix.Uname(&uts); err != nil {
-		return "", err
-	}
-	// nodename is the hostname field for uname.
-	hn := unix.ByteSliceToString(uts.Nodename[:])
-	return strings.TrimRight(hn, "\x00 "), nil
-}
+// // HostnameUname returns the current system hostname using uname(2).
+// func hostnameUname() (string, error) {
+// 	var uts unix.Utsname
+// 	if err := unix.Uname(&uts); err != nil {
+// 		return "", err
+// 	}
+// 	// nodename is the hostname field for uname.
+// 	hn := unix.ByteSliceToString(uts.Nodename[:])
+// 	return strings.TrimRight(hn, "\x00 "), nil
+// }
 
-// SetHostname sets the system hostname (Linux).
-// Note: typically requires appropriate privileges (e.g., root).
-func setHostname(name string) error {
-	name = strings.TrimSpace(name)
-	return unix.Sethostname([]byte(name))
-}
+// // SetHostname sets the system hostname (Linux).
+// // Note: typically requires appropriate privileges (e.g., root).
+// func setHostname(name string) error {
+// 	name = strings.TrimSpace(name)
+// 	return unix.Sethostname([]byte(name))
+// }
 
 // Hostname returns the current system hostname (Linux).
 func getHostname() (string, error) {
@@ -47,6 +46,7 @@ func getHostname() (string, error) {
 
 	return "", err
 }
+
 func validHostname(h string) error {
 	h = strings.TrimSpace(h)
 	if h == "" {
@@ -69,35 +69,35 @@ func validHostname(h string) error {
 	return nil
 }
 
-// func setHostname(hostname string) error {
-// 	hostname = strings.TrimSpace(hostname)
-// 	if err := validHostname(hostname); err != nil {
-// 		return err
-// 	}
+func setHostname(hostname string) error {
+	hostname = strings.TrimSpace(hostname)
+	if err := validHostname(hostname); err != nil {
+		return err
+	}
 
-// 	// Needs root (run the program as root or with sudo).
-// 	// --static and --transient cover the common cases.
-// 	cmd := exec.Command("sudo",
-// 		"hostnamectl",
-// 		"set-hostname",
-// 		"--static",
-// 		"--transient",
-// 		hostname,
-// 	)
-// 	out, err := cmd.CombinedOutput()
-// 	if err != nil {
-// 		return fmt.Errorf("hostnamectl failed: %w; output: %s", err, strings.TrimSpace(string(out)))
-// 	}
+	// Needs root (run the program as root or with sudo).
+	// --static and --transient cover the common cases.
+	cmd := exec.Command("sudo",
+		"hostnamectl",
+		"set-hostname",
+		"--static",
+		// "--transient",
+		hostname,
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("hostnamectl failed: %w; output: %s", err, strings.TrimSpace(string(out)))
+	}
 
-// 	// Force the kernel to update its idea of the hostname immediately.
-// 	cmd = exec.Command("sudo", "systemctl", "reboot")
-// 	out, err = cmd.CombinedOutput()
-// 	if err != nil {
-// 		return fmt.Errorf("hostname command failed: %w; output: %s", err, strings.TrimSpace(string(out)))
-// 	}
+	// Force the kernel to update its idea of the hostname immediately.
+	cmd = exec.Command("sudo", "systemctl", "reboot")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("hostname command failed: %w; output: %s", err, strings.TrimSpace(string(out)))
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
 // func SetPrettyHostname(pretty string) error {
 // 	pretty = strings.TrimSpace(pretty)
