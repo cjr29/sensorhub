@@ -199,8 +199,8 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		`SELECT ID, TIME, SENSORID, MODEL, CHANNEL, BATTERY, TEMPERATURE, HUMIDITY,
 		        SENSORNAME, STATION, LOCATION, DESCRIPTION, ACTIVE
 		   FROM SENSORS
-		  WHERE SENSORID = ?`,
-		sensorID,
+		  WHERE SENSORID = ? AND STATION = ? AND MODEL = ?`,
+		sensorID, sStation, toString(payload["model"]),
 	)
 
 	err = row.Scan(
