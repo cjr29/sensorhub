@@ -12,6 +12,8 @@ import (
 
 const AppVersion = "0.1.1"
 
+var hostName string
+
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
@@ -19,6 +21,15 @@ func main() {
 	var wg sync.WaitGroup
 
 	configureLogging()
+
+	// Retrieve hostname and log it
+	var err error
+	hostName, err = getHostname()
+	if err != nil {
+		logger.Error("Failed to retrieve hostname", "err", err)
+	} else {
+		logger.Info(fmt.Sprintf("Sensor Hub Hostname: %s", hostName))
+	}
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
