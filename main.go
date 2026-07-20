@@ -34,6 +34,14 @@ func main() {
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
 	logger.Info("App Version: " + AppVersion)
+	logger.Info("Verify that weather.db exists and is writable. If not, create it.")
+	db, err = initDB(dbPath)
+	// db, err = OpenOrCreateSQLite(dbPath)
+	if err != nil {
+		logger.Error(fmt.Sprintf("DB init failed: %v", err))
+	}
+	defer db.Close()
+
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
 		// WiFi not configured. Use hotspot configuration.

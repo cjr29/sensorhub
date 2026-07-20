@@ -26,8 +26,8 @@ type SensorPayload map[string]any
 func processSensorData(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 	defer wg.Done()
 	var err error
-	// db, err = initDB(dbPath)
-	db, err = OpenOrCreateSQLite(dbPath)
+	db, err = initDB(dbPath)
+	// db, err = OpenOrCreateSQLite(dbPath)
 	if err != nil {
 		logger.Error(fmt.Sprintf("DB init failed: %v", err))
 	}
@@ -75,42 +75,42 @@ func processSensorData(ctx context.Context, wg *sync.WaitGroup, logger *slog.Log
 	}
 }
 
-func OpenOrCreateSQLite(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("open sqlite: %w", err)
-	}
+// func OpenOrCreateSQLite(dbPath string) (*sql.DB, error) {
+// 	db, err := sql.Open("sqlite", dbPath)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("open sqlite: %w", err)
+// 	}
 
-	// Verify the connection (and that the file is usable/created).
-	if err := db.Ping(); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("ping sqlite: %w", err)
-	}
+// 	// Verify the connection (and that the file is usable/created).
+// 	if err := db.Ping(); err != nil {
+// 		_ = db.Close()
+// 		return nil, fmt.Errorf("ping sqlite: %w", err)
+// 	}
 
-	schema := `
-	CREATE TABLE IF NOT EXISTS SENSORS (
-		ID INTEGER PRIMARY KEY AUTOINCREMENT,
-		TIME TEXT,
-		SENSORID INTEGER,
-		MODEL TEXT,
-		CHANNEL TEXT,
-		BATTERY INTEGER,
-		TEMPERATURE NUMERIC,
-		HUMIDITY NUMERIC,
-		SENSORNAME TEXT,
-		STATION TEXT,
-		LOCATION TEXT,
-		DESCRIPTION TEXT,
-		ACTIVE INTEGER
-	);`
+// 	schema := `
+// 	CREATE TABLE IF NOT EXISTS SENSORS (
+// 		ID INTEGER PRIMARY KEY AUTOINCREMENT,
+// 		TIME TEXT,
+// 		SENSORID INTEGER,
+// 		MODEL TEXT,
+// 		CHANNEL TEXT,
+// 		BATTERY INTEGER,
+// 		TEMPERATURE NUMERIC,
+// 		HUMIDITY NUMERIC,
+// 		SENSORNAME TEXT,
+// 		STATION TEXT,
+// 		LOCATION TEXT,
+// 		DESCRIPTION TEXT,
+// 		ACTIVE INTEGER
+// 	);`
 
-	if _, err := db.Exec(schema); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("create schema: %w", err)
-	}
+// 	if _, err := db.Exec(schema); err != nil {
+// 		_ = db.Close()
+// 		return nil, fmt.Errorf("create schema: %w", err)
+// 	}
 
-	return db, nil
-}
+// 	return db, nil
+// }
 
 func initDB(path string) (*sql.DB, error) {
 	// modernc.org/sqlite registers driver name "sqlite"
