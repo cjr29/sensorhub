@@ -161,9 +161,10 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	sStation, err := getHostname()
 	if err != nil {
 		sStation = "UNKNOWN"
+		logger.Debug(fmt.Sprintf("Failed to retrieve hostname: %v, set to UNKNOWN", err))
 	}
-	sWeather := parts[2]
-	sSensors := parts[3]
+	sWeather := parts[1]
+	sSensors := parts[2]
 
 	if sWeather != "weather" || sSensors != "sensors" {
 		return
