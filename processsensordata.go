@@ -41,7 +41,7 @@ func processSensorData(ctx context.Context, wg *sync.WaitGroup, logger *slog.Log
 		logger.Debug("Connected to MQTT broker: subscribing")
 
 		subscribeTopics := []string{
-			"sensorhub/home/weather/sensors/#",
+			"sensorhub/weather/sensors/#",
 		}
 		for _, t := range subscribeTopics {
 			if token := c.Subscribe(t, 0, onMessage); token.Wait() && token.Error() != nil {
@@ -119,7 +119,11 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	}
 
 	// sHub := parts[0]
-	sStation := parts[1]
+	// sStation := parts[1]
+	sStation, err := getHostname()
+	if err != nil {
+		sStation = "UNKNOWN"
+	}
 	sWeather := parts[2]
 	sSensors := parts[3]
 
@@ -160,7 +164,7 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 
 	// STATION is scanned into a dummy since we don't need the old one except Python used cur_station = results[0][??].
 	var dummyStation sql.NullString
-	err := row.Scan(
+	err = row.Scan(
 		&curID, &curTime, &curSensorID, &curModel, &curChannel, &curBattery,
 		&curTemperature, &curHumidity, &curSensorName,
 		&dummyStation,

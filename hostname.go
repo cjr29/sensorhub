@@ -11,24 +11,6 @@ import (
 
 var hostLabelRE = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$`)
 
-// // HostnameUname returns the current system hostname using uname(2).
-// func hostnameUname() (string, error) {
-// 	var uts unix.Utsname
-// 	if err := unix.Uname(&uts); err != nil {
-// 		return "", err
-// 	}
-// 	// nodename is the hostname field for uname.
-// 	hn := unix.ByteSliceToString(uts.Nodename[:])
-// 	return strings.TrimRight(hn, "\x00 "), nil
-// }
-
-// // SetHostname sets the system hostname (Linux).
-// // Note: typically requires appropriate privileges (e.g., root).
-// func setHostname(name string) error {
-// 	name = strings.TrimSpace(name)
-// 	return unix.Sethostname([]byte(name))
-// }
-
 // Hostname returns the current system hostname (Linux).
 func getHostname() (string, error) {
 	// Most reliable/simple:
@@ -98,24 +80,3 @@ func setHostname(hostname string) error {
 
 	return nil
 }
-
-// func SetPrettyHostname(pretty string) error {
-// 	pretty = strings.TrimSpace(pretty)
-// 	if pretty == "" {
-// 		return fmt.Errorf("pretty hostname is empty")
-// 	}
-
-// 	// --pretty sets PRETTY_HOSTNAME in /etc/machine-info
-// 	cmd := exec.Command("hostnamectl", "set-hostname", "--pretty", pretty)
-// 	out, err := cmd.CombinedOutput()
-// 	if err != nil {
-// 		return fmt.Errorf("hostnamectl failed: %w; output: %s", err, strings.TrimSpace(string(out)))
-// 	}
-// 	return nil
-// }
-
-// func main() {
-// 	if err := SetPrettyHostname("My Server"); err != nil {
-// 		panic(err)
-// 	}
-// }
