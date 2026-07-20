@@ -152,7 +152,7 @@ func ensureTable(db *sql.DB) error {
 func onMessage(c mqtt.Client, m mqtt.Message) {
 	topic := string(m.Topic())
 	parts := strings.Split(topic, "/")
-	if len(parts) < 3 {
+	if len(parts) < 2 {
 		return
 	}
 
@@ -211,7 +211,7 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	)
 
 	if err == sql.ErrNoRows {
-		// Insert full record
+		// Sensor not in DB, Insert full record
 		sModel := toString(payload["model"])
 		sTime := toString(payload["time"])
 
@@ -279,9 +279,10 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 
 	newTime := toString(payload["time"])
 
+	// Update the existing record with data from the payload, using the overwrite rules
 	_, _ = db.Exec(
-		`UPDATE SENSORS SET TIME = ?, BATTERY = ?, TEMPERATURE = ?, HUMIDITY = ? WHERE ID = ?`,
-		newTime, newBattery, newTemperature, newHumidity, curID,
+		`UPDATE SENSORS SET TIME = ?, BATTERY = ?, TEMPERATURE = ?, HUMIDITY = ? WHERE ID = ? AND STATION = ? AND MODEL = ?`,
+		newTime, newBattery, newTemperature, newHumidity, curID, sStation, curModel.String,
 	)
 
 	_ = curModel
@@ -292,6 +293,8 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	_ = curDescription
 	_ = curActive
 	_ = curSensorID
+	_ = curTime
+	_ = curHumidity
 }
 
 func toString(v any) string {
