@@ -178,7 +178,7 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 
 	sensorID := toInt(payload["id"])
 
-	// Query existing
+	// Query existing, put results in these variables for comparison and update
 	var (
 		curID          int
 		curTime        sql.NullString
@@ -252,22 +252,19 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		return
 	}
 
-	// Update with overwrite rules
-	curTempVal := nullFloatOrDefault(curTemperature, -999.9)
-	curHumidVal := nullFloatOrDefault(curHumidity, -99.0)
+	// Sensor already exists in DB, update with overwrite rules
+	// Update with overwrite rules since sensor already exists in DB
+	newTemperature := nullFloatOrDefault(curTemperature, -999.9) // Use actual temp or -999.9 if no temperature data
+	newHumidity := nullFloatOrDefault(curHumidity, -99.0)        // Use actual humidity or -99.0 if no humidity data
 
-	newTemperature := curTempVal
-	if curTempVal != -999.9 {
-		if v, ok := payload["temperature_F"]; ok {
-			newTemperature = toFloat(v, curTempVal)
-		}
+	// Only overwrite if the new value is not the default "no data" value
+	if v, ok := payload["temperature_F"]; ok {
+		newTemperature = toFloat(v, -999.9)
 	}
 
-	newHumidity := curHumidVal
-	if curHumidVal != -99.0 {
-		if v, ok := payload["humidity"]; ok {
-			newHumidity = toFloat(v, curHumidVal)
-		}
+	// Only overwrite if the current value is not the default "no data" value
+	if v, ok := payload["humidity"]; ok {
+		newHumidity = toFloat(v, -999.9)
 	}
 
 	newBattery := int(curBattery.Int64)
