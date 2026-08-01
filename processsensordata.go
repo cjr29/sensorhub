@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -16,7 +18,8 @@ import (
 )
 
 var (
-	dbPath = "/var/sensorhub/weather.db"
+	dbPath     = "/var/sensorhub/weather.db"
+	macAddress string
 
 	client mqtt.Client
 )
@@ -33,6 +36,11 @@ func processSensorData(ctx context.Context, wg *sync.WaitGroup, logger *slog.Log
 	}
 	defer db.Close()
 
+	macAddress, err = MACForInterface("wlan0")
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to get MAC address, set to fallback MAC address: %v", err))
+		macAddress = "00:00:00:00:00:00" // Fallback MAC address
+	}
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", "localhost", 1883))
 	opts.SetClientID("ProcessSensorData")
@@ -74,43 +82,6 @@ func processSensorData(ctx context.Context, wg *sync.WaitGroup, logger *slog.Log
 		}
 	}
 }
-
-// func OpenOrCreateSQLite(dbPath string) (*sql.DB, error) {
-// 	db, err := sql.Open("sqlite", dbPath)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("open sqlite: %w", err)
-// 	}
-
-// 	// Verify the connection (and that the file is usable/created).
-// 	if err := db.Ping(); err != nil {
-// 		_ = db.Close()
-// 		return nil, fmt.Errorf("ping sqlite: %w", err)
-// 	}
-
-// 	schema := `
-// 	CREATE TABLE IF NOT EXISTS SENSORS (
-// 		ID INTEGER PRIMARY KEY AUTOINCREMENT,
-// 		TIME TEXT,
-// 		SENSORID INTEGER,
-// 		MODEL TEXT,
-// 		CHANNEL TEXT,
-// 		BATTERY INTEGER,
-// 		TEMPERATURE NUMERIC,
-// 		HUMIDITY NUMERIC,
-// 		SENSORNAME TEXT,
-// 		STATION TEXT,
-// 		LOCATION TEXT,
-// 		DESCRIPTION TEXT,
-// 		ACTIVE INTEGER
-// 	);`
-
-// 	if _, err := db.Exec(schema); err != nil {
-// 		_ = db.Close()
-// 		return nil, fmt.Errorf("create schema: %w", err)
-// 	}
-
-// 	return db, nil
-// }
 
 func initDB(path string) (*sql.DB, error) {
 	// modernc.org/sqlite registers driver name "sqlite"
@@ -156,13 +127,8 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		return
 	}
 
-	// sHub := parts[0]
-	// sStation := parts[1]
-	sStation, err := getHostname()
-	if err != nil {
-		sStation = "UNKNOWNSTATION"
-		logger.Debug(fmt.Sprintf("Failed to retrieve hostname: %v, set to UNKNOWNSTATION", err))
-	}
+	sStation := macAddress
+	// parts[0] is "sensorhub", parts[1] is "weather", parts[2] is "sensors", parts[3] is sensorID
 	sWeather := parts[1]
 	sSensors := parts[2]
 
@@ -203,7 +169,7 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		sensorID, sStation, toString(payload["model"]),
 	)
 
-	err = row.Scan(
+	err := row.Scan(
 		&curID, &curTime, &curSensorID, &curModel, &curChannel, &curBattery,
 		&curTemperature, &curHumidity, &curSensorName,
 		&curStation,
@@ -364,4 +330,15 @@ func nullFloatOrDefault(n sql.NullFloat64, def float64) float64 {
 		return def
 	}
 	return n.Float64
+}
+
+func MACForInterface(name string) (string, error) {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		return "", err
+	}
+	if len(iface.HardwareAddr) == 0 {
+		return "", errors.New("interface has no hardware (MAC) address")
+	}
+	return iface.HardwareAddr.String(), nil
 }
