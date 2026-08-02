@@ -37,7 +37,12 @@ func main() {
 	if err := EnsureSensorHubHostname(); err != nil {
 		logger.Error("Failed to set hostname", "err", err)
 	} else {
-		logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
+		hostName, err = getHostname()
+		if err != nil {
+			logger.Error("Failed to retrieve hostname", "err", err)
+		} else {
+			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
+		}
 	}
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
