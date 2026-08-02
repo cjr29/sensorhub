@@ -84,25 +84,18 @@ func setHostname(hostname string) error {
 }
 
 // EnsureSensorHubHostname checks hostname format and renames the Pi to
-// "sensorhubxxxxxx" where xxxxxx are the last six hex digits (last 3 bytes)
+// "sensorhubxxxxxx" where xxxxxxxxxxxxxx is the MAC address of wlan0. It returns an error if the hostname is invalid or if it fails to set the hostname. It requires root privileges to change the hostname and restart avahi-daemon.
 // of the MAC address of wlan0.
+
 func EnsureSensorHubHostname() error {
 	cur, err := os.Hostname()
 	if err != nil {
 		return fmt.Errorf("read hostname: %w", err)
 	}
 	cur = strings.ToLower(strings.TrimSpace(cur))
+	macSuffix, err := lastTwelveHexDigitsOfMACInterface("wlan0")
 
-	xxxxxx, err := lastSixHexDigitsOfMACInterface("wlan0")
-	if err != nil {
-		return err
-	}
-
-	want := "sensorhub" + xxxxxx
-	if cur == want {
-		return nil
-	}
-
+	want := "sensorhub" + macSuffix // e.g. sensorhub00:11:22:33:44:55
 	// hostnamectl typically requires root.
 	cmd := exec.Command("sudo",
 		"hostnamectl",
@@ -110,6 +103,7 @@ func EnsureSensorHubHostname() error {
 		"--static",
 		"--transient",
 		want)
+
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -126,7 +120,8 @@ func EnsureSensorHubHostname() error {
 	return nil
 }
 
-func lastSixHexDigitsOfMACInterface(ifName string) (string, error) {
+func lastTwelveHexDigitsOfMACInterface(ifName string) (string, error) {
+	// no colons, just the last 12 hex digits of the MAC address of the specified interface.
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return "", fmt.Errorf("list interfaces: %w", err)
@@ -142,11 +137,38 @@ func lastSixHexDigitsOfMACInterface(ifName string) (string, error) {
 	if len(mac) == 0 {
 		return "", fmt.Errorf("no MAC address found for interface %q", ifName)
 	}
-	if len(mac) < 3 {
+	if len(mac) < 6 {
 		return "", errors.New("MAC address too short")
 	}
 
-	// Last 3 bytes => 6 hex digits.
-	last3 := mac[len(mac)-3:]
-	return fmt.Sprintf("%02x%02x%02x", last3[0], last3[1], last3[2]), nil
+	// Entire MAC, rendered as 12 lowercase hex chars (colons removed).
+	return fmt.Sprintf("%02x%02x%02x%02x%02x%02x",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]), nil
+}
+
+func macWithColonsOfMACInterface(ifName string) (string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", fmt.Errorf("list interfaces: %w", err)
+	}
+
+	var mac net.HardwareAddr
+	for _, ifc := range ifaces {
+		if ifc.Name == ifName {
+			mac = ifc.HardwareAddr
+			break
+		}
+	}
+	if len(mac) == 0 {
+		return "", fmt.Errorf("no MAC address found for interface %q", ifName)
+	}
+	if len(mac) < 6 {
+		return "", errors.New("MAC address too short")
+	}
+
+	// Use only first 6 bytes if the HardwareAddr is longer (rare, but safe).
+	mac = mac[:6]
+
+	// net.HardwareAddr.String() returns colon-separated hex, e.g. "00:11:22:33:44:55".
+	return mac.String(), nil
 }

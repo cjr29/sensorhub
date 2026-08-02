@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.3.0" // This version uses MAC address instead of station to identify the sensor hub.
+const AppVersion = "0.3.1" // This version uses MAC address instead of station to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
 
 var hostName string
