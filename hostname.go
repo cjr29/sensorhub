@@ -20,14 +20,6 @@ func getHostname() (string, error) {
 	if err == nil {
 		return strings.TrimSpace(h), nil
 	}
-
-	// If needed, you can add a fallback reading /etc/hostname (optional).
-	// b, err2 := os.ReadFile("/etc/hostname")
-	// if err2 != nil {
-	//     return "", err // prefer the original os.Hostname error
-	// }
-	// return strings.TrimSpace(string(b)), nil
-
 	return "", err
 }
 

@@ -36,11 +36,11 @@ func processSensorData(ctx context.Context, wg *sync.WaitGroup, logger *slog.Log
 	}
 	defer db.Close()
 
-	macAddress, err = MACForInterface("wlan0")
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to get MAC address, set to fallback MAC address: %v", err))
-		macAddress = "000000000000" // Fallback MAC address
-	}
+	// macAddress, err = MACForInterface("wlan0")
+	// if err != nil {
+	// 	logger.Error(fmt.Sprintf("Failed to get MAC address, set to fallback MAC address: %v", err))
+	// 	macAddress = "000000000000" // Fallback MAC address
+	// }
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", "localhost", 1883))
 	opts.SetClientID("ProcessSensorData")
@@ -127,7 +127,8 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		return
 	}
 
-	sStation := macAddress
+	// Get hostname from global variable set in main.go
+	sStation := hostName // hostname = 'sensorhub' + last 12 hex digits of MAC address of wlan0 without colons
 	// parts[0] is "sensorhub", parts[1] is "weather", parts[2] is "sensors", parts[3] is sensorID
 	sWeather := parts[1]
 	sSensors := parts[2]
