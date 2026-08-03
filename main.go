@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.3.1" // This version uses MAC address instead of station to identify the sensor hub.
+const AppVersion = "0.4.0" // This version uses MAC address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
 
 var hostName string
@@ -32,7 +32,7 @@ func main() {
 		logger.Info(fmt.Sprintf("Sensor Hub Hostname: %s", hostName))
 	}
 
-	// Set hostname to sensorhub + last 6 hex digits of MAC address of wlan0.
+	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
 		logger.Error("Failed to set hostname", "err", err)
