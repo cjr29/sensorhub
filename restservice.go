@@ -65,6 +65,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 
 	r.Get("/sensors", handleGetSensors)
 	r.Get("/sensor/{id}", handleGetSensorID)
+	r.Get("/station", handleGetStation)
 	r.Patch("/sensor/rename", handlePatchSensorRename)
 	r.Patch("/sensor/full", handlePatchSensorFull)
 	r.Patch("/hostname", handleHostRename)
@@ -132,6 +133,35 @@ func handleGetSensorID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, item)
+}
+
+func handleGetStation(w http.ResponseWriter, r *http.Request) {
+	// Station is a single global value stored in SENSORS.STATION
+	// Use LIMIT 1 so we never scan the whole table.
+	q := `SELECT STATION FROM SENSORS WHERE STATION IS NOT NULL AND TRIM(STATION) <> '' LIMIT 1`
+
+	var station string
+	err := db.QueryRowContext(r.Context(), q).Scan(&station)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			w.WriteHeader(http.StatusNoContent)
+			writeJSON(w, http.StatusNoContent, map[string]any{"error": "Station not set"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "Database error"})
+		return
+	}
+
+	station = strings.TrimSpace(station)
+	if station == "" {
+		w.WriteHeader(http.StatusNoContent)
+		writeJSON(w, http.StatusNoContent, map[string]any{"error": "Station not set"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"STATION": station,
+	})
 }
 
 type patchRenameReq struct {
