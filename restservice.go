@@ -232,7 +232,6 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// connectToSSID will be implemented later
 	if err := connectToSSID(ssid, pwd); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"error": "Failed to connect",
@@ -244,37 +243,6 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 		"message": "Connect command sent",
 		"SSID":    ssid,
 	})
-}
-
-// defined later:
-func connectToSSID(ssid string, pwd string) error {
-	logger.Debug("Entered connectToSSID.")
-	// Hotspot should already be running, or we are connected to a good WiFi network
-
-	currentWiFi.SSID = ssid
-	currentWiFi.PWD = pwd
-
-	// Stop the hotspot if it's running
-	if err := stopHotspot(); err != nil {
-		logger.Error(fmt.Sprintf("Failed to stop hotspot: %v", err))
-		return err
-	}
-
-	// Use credentials to recreate a clean wifi-home connection profile
-	// Add the new connection profile before trying to bring it up
-	// Step 1: Delete existing profile if it exisits
-	if connectionExists(WiFiConnName) {
-		deleteConnection(WiFiConnName)
-	} // Step 2: Add new connection profile
-	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
-	if err != nil {
-		// Could not connect to WiFi
-		return fmt.Errorf("Failed to connect to %s: %v", currentWiFi.SSID, err)
-	}
-	// WiFi Connected
-	logger.Info(fmt.Sprintf("Successfully connected to the WiFi network %s", currentWiFi.SSID))
-
-	return nil
 }
 
 /****************** PATCH HANDLERS ******************/
