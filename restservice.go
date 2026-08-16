@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strconv"
 	"strings"
@@ -66,6 +67,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 	r.Get("/sensors", handleGetSensors)
 	r.Get("/sensor/{id}", handleGetSensorID)
 	r.Get("/station", handleGetStation)
+	r.Get("/ssids", getSSIDs)
 	r.Patch("/sensor/rename", handlePatchSensorRename)
 	r.Patch("/sensor/full", handlePatchSensorFull)
 	r.Patch("/hostname", handleHostRename)
@@ -162,6 +164,49 @@ func handleGetStation(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"STATION": station,
 	})
+}
+
+func getSSIDs(w http.ResponseWriter, r *http.Request) {
+	// Requires NetworkManager's nmcli.
+	// It lists Wi-Fi networks visible right now.
+	cmd := exec.CommandContext(r.Context(),
+		"nmcli", "-t", "-f", "SSID", "dev", "wifi", "list",
+	)
+
+	out, err := cmd.Output()
+	if err != nil {
+		// Common errors: nmcli not installed, not running, no Wi-Fi device, etc.
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": "Failed to list networks",
+		})
+		return
+	}
+
+	lines := strings.Split(string(out), "\n")
+
+	seen := make(map[string]struct{}, len(lines))
+	ssids := make([]string, 0, len(lines))
+
+	for _, s := range lines {
+		ssid := strings.TrimSpace(s)
+		if ssid == "" {
+			continue
+		}
+		if _, ok := seen[ssid]; ok {
+			continue
+		}
+		seen[ssid] = struct{}{}
+		ssids = append(ssids, ssid)
+	}
+
+	// Optional: keep consistent behavior with other handlers
+	if len(ssids) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		writeJSON(w, http.StatusNoContent, map[string]any{"error": "No SSIDs found"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, ssids)
 }
 
 type patchRenameReq struct {

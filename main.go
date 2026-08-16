@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.5.0" // This version uses mDNS address to identify the sensor hub.
+const AppVersion = "0.5.1" // This version uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
 // The hostname is set to "sensorhub" + 12 hex digits of MAC address of wlan0 without the colons.
 
