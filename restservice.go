@@ -68,6 +68,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 	r.Get("/sensor/{id}", handleGetSensorID)
 	r.Get("/station", handleGetStation)
 	r.Get("/ssids", getSSIDs)
+	r.Post("/connect-ssid", handlePostConnectSSID)
 	r.Patch("/sensor/rename", handlePatchSensorRename)
 	r.Patch("/sensor/full", handlePatchSensorFull)
 	r.Patch("/hostname", handleHostRename)
@@ -98,8 +99,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 	logger.Debug("!!!!! HTTP REST Server graceful shutdown complete.")
 }
 
-// --- handlers ---
-
+/************** GET HANDLERS ******************/
 func handleGetSensors(w http.ResponseWriter, r *http.Request) {
 	rows, err := queryAllSensorsAsMaps(r.Context())
 	if err != nil {
@@ -209,6 +209,75 @@ func getSSIDs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ssids)
 }
 
+/****************** POST HANDLERS ******************/
+type connectSSIDReq struct {
+	SSID     string `json:"SSID"`
+	Password string `json:"password"`
+}
+
+func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
+	var req connectSSIDReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		writeJSON(w, http.StatusNoContent, map[string]any{"error": "JSON decode error"})
+		return
+	}
+
+	ssid := strings.TrimSpace(req.SSID)
+	pwd := req.Password // allow empty for open networks; enforce if you want
+
+	if ssid == "" {
+		w.WriteHeader(http.StatusNoContent)
+		writeJSON(w, http.StatusNoContent, map[string]any{"error": "SSID is required"})
+		return
+	}
+
+	// connectToSSID will be implemented later
+	if err := connectToSSID(ssid, pwd); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": "Failed to connect",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message": "Connect command sent",
+		"SSID":    ssid,
+	})
+}
+
+// defined later:
+func connectToSSID(ssid string, pwd string) error {
+	logger.Debug("Entered connectToSSID.")
+	// Hotspot should already be running, or we are connected to a good WiFi network
+
+	currentWiFi.SSID = ssid
+	currentWiFi.PWD = pwd
+
+	// Stop the hotspot if it's running
+	if err := stopHotspot(); err != nil {
+		logger.Error(fmt.Sprintf("Failed to stop hotspot: %v", err))
+		return err
+	}
+
+	// Use credentials to recreate a clean wifi-home connection profile
+	// Add the new connection profile before trying to bring it up
+	// Step 1: Delete existing profile if it exisits
+	if connectionExists(WiFiConnName) {
+		deleteConnection(WiFiConnName)
+	} // Step 2: Add new connection profile
+	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
+	if err != nil {
+		// Could not connect to WiFi
+		return fmt.Errorf("Failed to connect to %s: %v", currentWiFi.SSID, err)
+	}
+	// WiFi Connected
+	logger.Info(fmt.Sprintf("Successfully connected to the WiFi network %s", currentWiFi.SSID))
+
+	return nil
+}
+
+/****************** PATCH HANDLERS ******************/
 type patchRenameReq struct {
 	ID         int    `json:"ID"`
 	SENSORNAME string `json:"SENSORNAME"`
