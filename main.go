@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 )
 
 const AppVersion = "0.5.2" // This version uses mDNS address to identify the sensor hub.
@@ -57,17 +56,27 @@ func main() {
 	}
 	defer db.Close()
 
+	// Configure background processing channels
+	wg.Add(4)
+	defer wg.Done()
+
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
-		// WiFi not configured. Use hotspot configuration.
-		loginWiFiViaHotspot()
+		// WiFi not configured. Start Hotspot and wit for restservice to handle configuration.
+		if err := startHotspot(); err != nil {
+			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
+		} else {
+			logger.Info("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s.", HotspotSSID)
+		}
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
 	}
+	// Start the REST service in a separate goroutine
+	go restService(ctx, &wg, logger)
 
-	logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
-	logger.Debug("Pause 2 seconds for WiFi to stabilize before checking Internet access.")
-	time.Sleep(time.Duration(2) * time.Second)
+	// logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
+	// logger.Debug("Pause 2 seconds for WiFi to stabilize before checking Internet access.")
+	// time.Sleep(time.Duration(2) * time.Second)
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
@@ -80,11 +89,9 @@ func main() {
 	/********  WiFi Configured, proceed with processing *********************************/
 
 	// Start the background processing threads now that we are connected to WiFi
-	logger.Info(">>>>> Starting background processes")
-	wg.Add(4)
-	defer wg.Done()
+	logger.Info(">>>>> Starting remaining background processes")
+
 	go processSensorData(ctx, &wg, logger)    // Background thread to process sensor data
-	go restService(ctx, &wg, logger)          // Background thread to log that the REST service is still running
 	go removeExpiredSensors(ctx, &wg, logger) // Background thread to process expired sensors
 	go monitorWiFi(ctx, &wg, logger)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 

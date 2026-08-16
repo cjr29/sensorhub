@@ -150,17 +150,6 @@ func startHotspot() error {
 	// Be sure that the hotspot connection profile exists, create it if it does not exist
 	exists := connectionExists(HotspotConnName)
 	if exists {
-		// // If hotspot profile already exists, check if active and if it is , stop it
-		// active, err := connectionActive(context.Background(), HotspotConnName)
-		// if err != nil {
-		// 	logger.Error(fmt.Sprintf("Failed checking hotspot connection. %s", err))
-		// 	return (err)
-		// }
-		// if active {
-		// 	// Connection is active, return no error. Hotspot already up and running.
-		// 	return nil
-		// } else {
-		// Exists, but not active, bring it up
 		logger.Debug("SensorHubHotspot not active. Bring it up.")
 		return exec.Command("sudo", "nmcli", "connection", "up", HotspotConnName).Run()
 	} else {
