@@ -243,6 +243,11 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 		"message": "Connect command sent",
 		"SSID":    ssid,
 	})
+
+	// Persist WiFi credentials
+	currentWiFi.SSID = ssid
+	currentWiFi.PWD = pwd
+	currentWiFi.saveSSIDPWD()
 }
 
 /****************** PATCH HANDLERS ******************/

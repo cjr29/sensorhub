@@ -257,22 +257,19 @@ func connectToSSID(ssid string, pwd string) error {
 		}
 	}
 
-	// Persist WiFi credentials
-	currentWiFi.saveSSIDPWD()
-
 	// Use credentials to recreate a clean wifi-home connection profile
 	// Add the new connection profile before trying to bring it up
 	// Step 1: Delete existing profile if it exisits
 	if connectionExists(WiFiConnName) {
 		deleteConnection(WiFiConnName)
 	} // Step 2: Add new connection profile
-	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
+	err := addWifiConnection(WiFiConnName, ssid, pwd)
 	if err != nil {
 		// Could not connect to WiFi
-		return fmt.Errorf("Failed to connect to %s: %v", currentWiFi.SSID, err)
+		return fmt.Errorf("Failed to connect to %s: %v", ssid, err)
 	}
 	// WiFi Connected
-	logger.Info(fmt.Sprintf("Successfully connected to the WiFi network %s", currentWiFi.SSID))
+	logger.Info(fmt.Sprintf("Successfully connected to the WiFi network %s", ssid))
 
 	return nil
 }
