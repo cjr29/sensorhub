@@ -257,8 +257,8 @@ func connectToSSID(ssid string, pwd string) error {
 		}
 	}
 
-	currentWiFi.SSID = ssid
-	currentWiFi.PWD = pwd
+	// Persist WiFi credentials
+	currentWiFi.saveSSIDPWD()
 
 	// Use credentials to recreate a clean wifi-home connection profile
 	// Add the new connection profile before trying to bring it up

@@ -66,7 +66,7 @@ func main() {
 		if err := startHotspot(); err != nil {
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 		} else {
-			logger.Info("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s.", HotspotSSID)
+			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
