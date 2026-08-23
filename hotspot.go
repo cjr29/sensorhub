@@ -595,3 +595,13 @@ func isConfigFile() bool {
 	}
 	return false // No config file, return false
 }
+
+func restartAvahiDaemon() error {
+	logger.Debug("Entered restartAvahiDaemon.")
+	cmd := exec.Command("sudo", "systemctl", "restart", "avahi-daemon")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, string(output))
+	}
+	return nil
+}

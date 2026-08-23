@@ -248,6 +248,11 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	currentWiFi.SSID = ssid
 	currentWiFi.PWD = pwd
 	currentWiFi.saveSSIDPWD()
+
+	// Restart avahi-daemon to update mDNS hostname
+	if err := restartAvahiDaemon(); err != nil {
+		logger.Error(fmt.Sprintf("Failed to restart avahi-daemon: %v", err))
+	}
 }
 
 /****************** PATCH HANDLERS ******************/

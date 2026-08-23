@@ -3,7 +3,8 @@
 <service-group>
   <name replace-wildcards="yes">%h</name>
   <service>
-    <type>_http._tcp</type>
+    <type>_sensorhub._tcp</type>
     <port>5000</port>
+    <txt-record>device=Sensor Hub</txt-record>
   </service>
 </service-group>
