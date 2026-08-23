@@ -246,7 +246,7 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 
 	// Persist WiFi credentials
 	currentWiFi.SSID = ssid
-	currentWiFi.PWD = pwd
+	currentWiFi.PWD = "protected" // Do not log the actual password
 	currentWiFi.saveSSIDPWD()
 
 	// Restart avahi-daemon to update mDNS hostname
