@@ -491,17 +491,18 @@ func wifiConfigured() bool {
 		logger.Debug("Unable to find or read config file. WiFi not configured.")
 		return false
 	} else {
-		// Has an SSID and PWD. Try opening a connection.
-		err = connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
-		if err == nil {
-			// WiFi up
-			logger.Debug(fmt.Sprintf("WiFi preconfigured for SSID %s", currentWiFi.SSID))
-			return true
-		} else {
-			// Unable to copen wifi using existing configuration
-			logger.Debug(fmt.Sprintf("Unable to open WiFi with existing configuration for SSID %s", currentWiFi.SSID))
-			return false
-		}
+		// // Has an SSID and PWD. Try opening a connection.
+		// err = connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
+		// if err == nil {
+		// 	// WiFi up
+		logger.Debug(fmt.Sprintf("WiFi preconfigured for SSID %s", currentWiFi.SSID))
+		// 	return true
+		// } else {
+		// 	// Unable to reopen wifi using existing configuration
+		// 	logger.Debug(fmt.Sprintf("Unable to open WiFi with existing configuration for SSID %s", currentWiFi.SSID))
+		// 	return false
+		// }
+		return true
 	}
 }
 

@@ -246,7 +246,8 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 
 	// Persist WiFi credentials
 	currentWiFi.SSID = ssid
-	currentWiFi.PWD = pwd
+	// Password is saved in the wifi-home wlan0 connection, but we do not log it for security reasons.
+	currentWiFi.PWD = "password" // Do not log the actual password for security reasons
 	currentWiFi.saveSSIDPWD()
 
 	// Restart avahi-daemon to update mDNS hostname
