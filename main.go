@@ -40,11 +40,13 @@ func main() {
 			os.Exit(1)
 		}
 		busConfigured = true
+		logger.Debug("GPIO bus is configured")
 	}
 
 	// Start activity LED
 	ledControl := make(chan int)
 	logger.Debug("Starting LED background thread.")
+
 	go blinkActivityLED(ctxLED, ledControl)
 
 	// Wait for the LED to be initialized before sending commands to it

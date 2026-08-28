@@ -85,6 +85,9 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 					if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
 						stopBlink()
 					}
+					if err := greenPin.Halt(); err != nil {
+						logger.Debug(fmt.Sprintf("failed to release GPIO: %v", err))
+					}
 					rate = 0
 					_ = redPin.Out(gpio.Low)
 					_ = greenPin.Out(gpio.High)
