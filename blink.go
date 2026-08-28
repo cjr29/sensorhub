@@ -52,10 +52,13 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 	var rate float64
 	var currentState int = OFF
 
+	ctxBlink, stopBlink := context.WithCancel(context.Background())
+
 	for {
 		select {
 		case <-ctx.Done():
 			// Turn off the LED before exiting.
+			stopBlink()
 			_ = redPin.Out(gpio.Low)
 			_ = greenPin.Out(gpio.Low)
 			return
@@ -65,35 +68,48 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 				currentState = newState
 				switch currentState {
 				case OFF:
+					if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
+						stopBlink()
+					}
 					rate = 0
 					_ = redPin.Out(gpio.Low)
 					_ = greenPin.Out(gpio.Low)
 				case REDON:
+					if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
+						stopBlink()
+					}
 					rate = 0
 					_ = redPin.Out(gpio.High)
 					_ = greenPin.Out(gpio.Low)
 				case GREENON:
+					if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
+						stopBlink()
+					}
 					rate = 0
 					_ = redPin.Out(gpio.Low)
 					_ = greenPin.Out(gpio.High)
 				case REDSLOW:
+					stopBlink()
 					rate = SLOW
-					if err := blink(ctx, RED, rate); err != nil {
+					if err := blink(ctxBlink, RED, rate); err != nil {
 						logger.Error("Failed to blink red LED", "err", err)
 					}
 				case GREENSLOW:
+					stopBlink()
 					rate = SLOW
-					if err := blink(ctx, GREEN, rate); err != nil {
+					if err := blink(ctxBlink, GREEN, rate); err != nil {
 						logger.Error("Failed to blink green LED", "err", err)
 					}
 				case REDFAST:
+					stopBlink()
 					rate = FAST
-					if err := blink(ctx, RED, rate); err != nil {
+					if err := blink(ctxBlink, RED, rate); err != nil {
 						logger.Error("Failed to blink red LED", "err", err)
 					}
 				case GREENFAST:
+					stopBlink()
 					rate = FAST
-					if err := blink(ctx, GREEN, rate); err != nil {
+					if err := blink(ctxBlink, GREEN, rate); err != nil {
 						logger.Error("Failed to blink green LED", "err", err)
 					}
 				default:

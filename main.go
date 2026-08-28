@@ -33,13 +33,15 @@ func main() {
 
 	// Initialize the host GPIO driver to support LED and pushbutton.
 	if _, err := host.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "initializing GPIO: %v\n", err)
+		logger.Error(fmt.Sprintf("Error initializing GPIO: %v\n", err))
 		os.Exit(1)
 	}
 
 	// Start activity LED
 	ledControl := make(chan int)
+	logger.Debug("Starting LED background thread.")
 	go blinkActivityLED(ctxLED, ledControl)
+	logger.Debug("Sending initial LED command to set LED to red slow blink to indicate startup.")
 	ledControl <- REDSLOW // Set LED to red slow blink to indicate startup
 
 	// Retrieve hostname and log it
@@ -67,7 +69,6 @@ func main() {
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
-	logger.Info("App Version: " + AppVersion)
 	logger.Info("Verify that weather.db exists and is writable. If not, create it.")
 	db, err = initDB(dbPath)
 	// db, err = OpenOrCreateSQLite(dbPath)
@@ -90,11 +91,9 @@ func main() {
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
 	} else {
-		ledControl <- GREENON // Set LED to green on to indicate WiFi is configured and connected
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
+		ledControl <- GREENON // Set LED to green on to indicate WiFi is configured and connected
 	}
-
-	ledControl <- GREENON // Set LED to green on to indicate WiFi is configured and connected
 
 	// Start the REST service in a separate goroutine
 	go restService(ctx, &wg, logger)
