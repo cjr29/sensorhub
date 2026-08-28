@@ -91,41 +91,24 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 				case REDSLOW:
 					stopBlink()
 					rate = SLOW
-					if err := blink(ctxBlink, RED, rate); err != nil {
-						logger.Error("Failed to blink red LED", "err", err)
-					}
+					go blink(ctxBlink, RED, rate)
 				case GREENSLOW:
 					stopBlink()
 					rate = SLOW
-					if err := blink(ctxBlink, GREEN, rate); err != nil {
-						logger.Error("Failed to blink green LED", "err", err)
-					}
+					go blink(ctxBlink, GREEN, rate)
 				case REDFAST:
 					stopBlink()
 					rate = FAST
-					if err := blink(ctxBlink, RED, rate); err != nil {
-						logger.Error("Failed to blink red LED", "err", err)
-					}
+					go blink(ctxBlink, RED, rate)
 				case GREENFAST:
 					stopBlink()
 					rate = FAST
-					if err := blink(ctxBlink, GREEN, rate); err != nil {
-						logger.Error("Failed to blink green LED", "err", err)
-					}
+					go blink(ctxBlink, GREEN, rate)
 				default:
 					logger.Error("Invalid LED state", "state", currentState)
 				}
 			}
 		}
-
-		// if rate > 0 {
-		// 	if err := blink(ctx, RED, rate); err != nil {
-		// 		logger.Error("Failed to blink red LED", "err", err)
-		// 	}
-		// 	if err := blink(ctx, GREEN, rate); err != nil {
-		// 		logger.Error("Failed to blink green LED", "err", err)
-		// 	}
-		// }
 	}
 }
 
@@ -138,26 +121,26 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 //
 // The goroutine stops when ctx is canceled. The LED is switched off before
 // the function returns.
-func blink(ctx context.Context, pinName string, rateHz float64) error {
+func blink(ctx context.Context, pinName string, rateHz float64) {
 
 	// Convert pin name to gpio.PinIO
 	pin := gpioreg.ByName(pinName)
 	if pin == nil {
-		return fmt.Errorf("Invalid pin: %s", pinName)
+		return
 	}
 
 	if rateHz <= 0 {
-		return fmt.Errorf("blink rate must be greater than zero")
+		return
 	}
 
 	// One complete cycle consists of an ON interval and an OFF interval.
 	halfPeriod := time.Duration(float64(time.Second) / (2 * rateHz))
 	if halfPeriod <= 0 {
-		return fmt.Errorf("blink rate is too high")
+		return
 	}
 
 	if err := pin.Out(gpio.Low); err != nil {
-		return fmt.Errorf("initializing GPIO: %w", err)
+		return
 	}
 
 	defer func() {
@@ -174,7 +157,7 @@ func blink(ctx context.Context, pinName string, rateHz float64) error {
 		select {
 		case <-ctx.Done():
 			pin.Out(gpio.Low) // Ensure LED is off when stopping
-			return nil
+			return
 
 		case <-ticker.C:
 			if level == gpio.Low {
@@ -184,11 +167,16 @@ func blink(ctx context.Context, pinName string, rateHz float64) error {
 			}
 
 			if err := pin.Out(level); err != nil {
-				return fmt.Errorf("writing GPIO: %w", err)
+				return
 			}
 		}
 	}
 }
+
+// func stopBlink(pinName string) {
+// 	pin := gpioreg.ByName(pinName)
+// 	pin.In(gpio.PullNoChange, gpio.NoEdge)
+// }
 
 func pinFromName(name string) (gpio.PinIO, error) {
 	pin := gpioreg.ByName(name)
@@ -202,6 +190,22 @@ func pinFromName(name string) (gpio.PinIO, error) {
 	}
 
 	return pinIO, nil
+}
+
+func resetDevice(reset gpio.PinOut) error {
+	// Active-low reset: hold low, then release high.
+	if err := reset.Out(gpio.Low); err != nil {
+		return err
+	}
+
+	time.Sleep(10 * time.Millisecond)
+
+	if err := reset.Out(gpio.High); err != nil {
+		return err
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	return nil
 }
 
 /***********************************************

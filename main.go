@@ -19,6 +19,7 @@ const AppVersion = "0.6.1"
 // The hostname is set to "sensorhub" + 12 hex digits of MAC address of wlan0 without the colons.
 
 var hostName string
+var busConfigured bool = false
 
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
@@ -33,9 +34,12 @@ func main() {
 	logger.Info("Starting Sensor Hub main program. Version: " + AppVersion)
 
 	// Initialize the host GPIO driver to support LED and pushbutton.
-	if _, err := host.Init(); err != nil {
-		logger.Error(fmt.Sprintf("Error initializing GPIO: %v\n", err))
-		os.Exit(1)
+	if !busConfigured {
+		if _, err := host.Init(); err != nil {
+			logger.Error(fmt.Sprintf("Error initializing GPIO: %v\n", err))
+			os.Exit(1)
+		}
+		busConfigured = true
 	}
 
 	// Start activity LED
