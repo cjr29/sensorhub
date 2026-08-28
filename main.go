@@ -11,7 +11,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.6.0"
+const AppVersion = "0.6.1"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -56,11 +56,12 @@ func main() {
 	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
+		ledControl <- REDFAST // Set LED to red fast blink to indicate error
 		logger.Error("Failed to set hostname", "err", err)
 	} else {
 		hostName, err = getHostname()
 		if err != nil {
-			ledControl <- REDSLOW // Set LED to red slow blink to indicate error
+			ledControl <- REDFAST // Set LED to red fast blink to indicate error
 			logger.Error("Failed to retrieve hostname", "err", err)
 		} else {
 			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
@@ -83,11 +84,13 @@ func main() {
 
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
-		// WiFi not configured. Start Hotspot and wit for restservice to handle configuration.
+		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
 		ledControl <- GREENFAST // Set LED to green fast blink to indicate waiting for WiFi configuration
 		if err := startHotspot(); err != nil {
+			ledControl <- REDFAST // Set LED to red fast blink to indicate error
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 		} else {
+			ledControl <- GREENSLOW // Set LED to green slow blink to indicate hotspot started and waiting for configuration
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
 	} else {
