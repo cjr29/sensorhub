@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func monitorWiFi(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
+func monitorWiFi(ctx context.Context, wg *sync.WaitGroup, cmd chan int, logger *slog.Logger) {
 	defer wg.Done()
 	for {
 		select {
@@ -20,8 +20,10 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
 			logger.Debug(fmt.Sprintf("Check WiFi availability every %d seconds", amt))
 			// See if Internet (remote) access is available
 			if hasInternet() {
+				cmd <- GREENON // Set LED to green on to indicate WiFi is configured and connected
 				logger.Debug("Internet access confirmed")
 			} else {
+				cmd <- GREENSLOW // Set LED to green slow to indicate WiFi is configured but no Internet access
 				logger.Debug("Only localhost access available. No Internet.")
 			}
 			time.Sleep(time.Duration(amt) * time.Second)

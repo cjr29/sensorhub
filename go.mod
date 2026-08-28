@@ -6,6 +6,8 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/go-chi/chi/v5 v5.3.0
 	modernc.org/sqlite v1.53.0
+	periph.io/x/conn/v3 v3.7.3
+	periph.io/x/host/v3 v3.8.5
 )
 
 require (
