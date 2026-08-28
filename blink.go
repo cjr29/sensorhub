@@ -57,10 +57,10 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 	for {
 		select {
 		case <-ctx.Done():
-			// Turn off the LED before exiting.
-			stopBlink()
 			_ = redPin.Out(gpio.Low)
 			_ = greenPin.Out(gpio.Low)
+			// Turn off the LED before exiting.
+			stopBlink()
 			return
 
 		case newState := <-cmd:
@@ -173,6 +173,7 @@ func blink(ctx context.Context, pinName string, rateHz float64) error {
 	for {
 		select {
 		case <-ctx.Done():
+			pin.Out(gpio.Low) // Ensure LED is off when stopping
 			return nil
 
 		case <-ticker.C:
