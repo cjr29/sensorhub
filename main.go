@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"periph.io/x/host/v3"
 )
@@ -41,6 +42,9 @@ func main() {
 	ledControl := make(chan int)
 	logger.Debug("Starting LED background thread.")
 	go blinkActivityLED(ctxLED, ledControl)
+
+	// Wait for the LED to be initialized before sending commands to it
+	time.Sleep(time.Duration(1) * time.Second)
 	logger.Debug("Sending initial LED command to set LED to red slow blink to indicate startup.")
 	ledControl <- REDSLOW // Set LED to red slow blink to indicate startup
 
