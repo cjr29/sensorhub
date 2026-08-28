@@ -78,26 +78,38 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 					_ = greenPin.Out(gpio.High)
 				case REDSLOW:
 					rate = SLOW
+					if err := blink(ctx, RED, rate); err != nil {
+						logger.Error("Failed to blink red LED", "err", err)
+					}
 				case GREENSLOW:
 					rate = SLOW
+					if err := blink(ctx, GREEN, rate); err != nil {
+						logger.Error("Failed to blink green LED", "err", err)
+					}
 				case REDFAST:
 					rate = FAST
+					if err := blink(ctx, RED, rate); err != nil {
+						logger.Error("Failed to blink red LED", "err", err)
+					}
 				case GREENFAST:
 					rate = FAST
+					if err := blink(ctx, GREEN, rate); err != nil {
+						logger.Error("Failed to blink green LED", "err", err)
+					}
 				default:
 					logger.Error("Invalid LED state", "state", currentState)
 				}
 			}
 		}
 
-		if rate > 0 {
-			if err := blink(ctx, RED, rate); err != nil {
-				logger.Error("Failed to blink red LED", "err", err)
-			}
-			if err := blink(ctx, GREEN, rate); err != nil {
-				logger.Error("Failed to blink green LED", "err", err)
-			}
-		}
+		// if rate > 0 {
+		// 	if err := blink(ctx, RED, rate); err != nil {
+		// 		logger.Error("Failed to blink red LED", "err", err)
+		// 	}
+		// 	if err := blink(ctx, GREEN, rate); err != nil {
+		// 		logger.Error("Failed to blink green LED", "err", err)
+		// 	}
+		// }
 	}
 }
 
