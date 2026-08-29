@@ -99,6 +99,7 @@ func runWiFiViaHotspot() {
 	}
 	// WiFi Connected
 	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
+	lightCMD <- GREENON
 }
 
 func loginWiFiViaHotspot() {
@@ -159,6 +160,7 @@ func startHotspot() error {
 		err := addHotspotConnection(HotspotConnName, HotspotSSID, HotspotPWD)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Error creating hotspot connection: %s", err))
+			return err
 		}
 		logger.Debug(fmt.Sprintf("Hotspot connection %s for SSID %s is up.", HotspotConnName, HotspotSSID))
 	}

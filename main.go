@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.6.5"
+const AppVersion = "0.6.6"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -20,6 +20,9 @@ const AppVersion = "0.6.5"
 
 var hostName string
 var busConfigured bool = false
+
+// Channel for comman ding the light control goroutine to change the LED state
+var lightCMD = make(chan int)
 
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
@@ -47,13 +50,9 @@ func main() {
 	redLight = NewGPIOLED("Activity", RED)
 	greenLight = NewGPIOLED("WiFi", GREEN)
 
-	// Channel for comman ding the light control goroutine to change the LED state
-	lightCMD := make(chan int)
 	logger.Debug("Starting LED background thread.")
 
-	// // Start blinking in a goroutine
-	// go blinkLED(activityLight, ctx, 500*time.Millisecond)
-
+	// // Start activity light in a goroutine
 	go lightControl(ctxLight, lightCMD)
 
 	// Wait for the LED to be initialized before sending commands to it
