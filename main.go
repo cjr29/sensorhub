@@ -40,8 +40,8 @@ func main() {
 			os.Exit(1)
 		}
 		busConfigured = true
-		logger.Debug("GPIO bus is configured")
 	}
+	logger.Debug("GPIO bus is configured")
 
 	// Start activity LED
 	ledControl := make(chan int)

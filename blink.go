@@ -78,6 +78,9 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 					if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
 						stopBlink()
 					}
+					if err := redPin.Halt(); err != nil {
+						logger.Debug(fmt.Sprintf("failed to release GPIO: %v", err))
+					}
 					rate = 0
 					_ = redPin.Out(gpio.High)
 					_ = greenPin.Out(gpio.Low)
@@ -93,18 +96,30 @@ func blinkActivityLED(ctx context.Context, cmd chan int) {
 					_ = greenPin.Out(gpio.High)
 				case REDSLOW:
 					stopBlink()
+					if err := redPin.Halt(); err != nil {
+						logger.Debug(fmt.Sprintf("failed to release GPIO: %v", err))
+					}
 					rate = SLOW
 					go blink(ctxBlink, RED, rate)
 				case GREENSLOW:
 					stopBlink()
+					if err := greenPin.Halt(); err != nil {
+						logger.Debug(fmt.Sprintf("failed to release GPIO: %v", err))
+					}
 					rate = SLOW
 					go blink(ctxBlink, GREEN, rate)
 				case REDFAST:
 					stopBlink()
+					if err := redPin.Halt(); err != nil {
+						logger.Debug(fmt.Sprintf("failed to release GPIO: %v", err))
+					}
 					rate = FAST
 					go blink(ctxBlink, RED, rate)
 				case GREENFAST:
 					stopBlink()
+					if err := greenPin.Halt(); err != nil {
+						logger.Debug(fmt.Sprintf("failed to release GPIO: %v", err))
+					}
 					rate = FAST
 					go blink(ctxBlink, GREEN, rate)
 				default:
