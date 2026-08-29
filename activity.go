@@ -69,6 +69,8 @@ func lightControl(ctx context.Context, cmd chan int) {
 		case <-ctx.Done():
 			// Turn off the LED before exiting.
 			stopBlink()
+			greenLight.Off()
+			redLight.Off()
 			releasePin(redLight.Pin)
 			releasePin(greenLight.Pin)
 			return
@@ -96,20 +98,30 @@ func lightControl(ctx context.Context, cmd chan int) {
 						stopBlink()
 					}
 					rate = 0
+					redLight.Off()
+					greenLight.On()
 				case REDSLOW:
 					stopBlink()
+					greenLight.Off()
+					redLight.Off()
 					rate = SLOW
 					go blinkLight(redLight, ctxBlink, rate)
 				case GREENSLOW:
 					stopBlink()
+					greenLight.Off()
+					redLight.Off()
 					rate = SLOW
 					go blinkLight(greenLight, ctxBlink, rate)
 				case REDFAST:
 					stopBlink()
+					greenLight.Off()
+					redLight.Off()
 					rate = FAST
 					go blinkLight(redLight, ctxBlink, rate)
 				case GREENFAST:
 					stopBlink()
+					greenLight.Off()
+					redLight.Off()
 					rate = FAST
 					go blinkLight(greenLight, ctxBlink, rate)
 				default:
