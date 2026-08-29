@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.6.6"
+const AppVersion = "0.6.7"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -22,7 +22,7 @@ var hostName string
 var busConfigured bool = false
 
 // Channel for comman ding the light control goroutine to change the LED state
-var lightCMD = make(chan int)
+var lightCMD = make(chan int, 5)
 
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
@@ -42,23 +42,24 @@ func main() {
 			logger.Error(fmt.Sprintf("Error initializing GPIO: %v\n", err))
 			os.Exit(1)
 		}
+		// Wait for the bus to be initialized before sending commands to it
+		time.Sleep(time.Duration(1) * time.Second)
 		busConfigured = true
 	}
 	logger.Debug("GPIO bus is configured")
 
 	// Create activity Light and other layout status lights and button
-	redLight = NewGPIOLED("Activity", RED)
-	greenLight = NewGPIOLED("WiFi", GREEN)
+	redLight = NewGPIOLED("Red Light", RED)
+	greenLight = NewGPIOLED("Green Light", GREEN)
 
 	logger.Debug("Starting LED background thread.")
 
 	// // Start activity light in a goroutine
 	go lightControl(ctxLight, lightCMD)
 
-	// Wait for the LED to be initialized before sending commands to it
-	time.Sleep(time.Duration(1) * time.Second)
 	logger.Debug("REDSLOW")
 	lightCMD <- REDSLOW // Set LED to red slow blink to indicate startup
+	time.Sleep(time.Duration(5) * time.Second)
 
 	// Retrieve hostname and log it
 	var err error

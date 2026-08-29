@@ -40,7 +40,7 @@ var greenLight *LEDGPIO
 func blinkLight(led *LEDGPIO, ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	logger.Debug("LED started blinking...")
+	logger.Debug(fmt.Sprintf("Started blinking for %s.", led.Name))
 	for {
 		select {
 		case <-ctx.Done():
