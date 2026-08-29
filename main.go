@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.6.7"
+const AppVersion = "0.6.8"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -52,7 +52,7 @@ func main() {
 	redLight = NewGPIOLED("Red Light", RED)
 	greenLight = NewGPIOLED("Green Light", GREEN)
 
-	logger.Debug("Starting LED background thread.")
+	logger.Debug("Starting activity light background thread...")
 
 	// // Start activity light in a goroutine
 	go lightControl(ctxLight, lightCMD)
@@ -81,17 +81,15 @@ func main() {
 	} else {
 		hostName, err = getHostname()
 		if err != nil {
-			logger.Debug("REDFAST")
-			lightCMD <- REDFAST // Set LED to red fast blink to indicate error
-			logger.Error("Failed to retrieve hostname. RED fast.", "err", err)
+			logger.Error("Failed to retrieve hostname.", "err", err)
 			time.Sleep(time.Duration(5) * time.Second)
 			os.Exit(1)
 		} else {
 			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
+			logger.Debug("GREENFAST")
 			lightCMD <- GREENFAST
 		}
 	}
-	lightCMD <- GREENFAST // Set LED to green fast blink to indicate hostname set and ready for Wi-Fi configuration
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
@@ -131,10 +129,6 @@ func main() {
 	// Starts now in order to handle Hotspot configuration if needed.
 	// If WiFi is already configured, the REST service will still be available for other requests.
 	go restService(ctx, &wg, logger)
-
-	// logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
-	// logger.Debug("Pause 2 seconds for WiFi to stabilize before checking Internet access.")
-	// time.Sleep(time.Duration(2) * time.Second)
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
