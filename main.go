@@ -67,16 +67,17 @@ func main() {
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
 		ledControl <- REDFAST // Set LED to red fast blink to indicate error
-		logger.Error("Failed to set hostname", "err", err)
+		logger.Error("Failed to set hostname. RED fast.", "err", err)
 	} else {
 		hostName, err = getHostname()
 		if err != nil {
 			ledControl <- REDFAST // Set LED to red fast blink to indicate error
-			logger.Error("Failed to retrieve hostname", "err", err)
+			logger.Error("Failed to retrieve hostname. RED fast.", "err", err)
 		} else {
 			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
 		}
 	}
+	ledControl <- GREENFAST // Set LED to green fast blink to indicate hostname set and ready for Wi-Fi configuration
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
@@ -103,6 +104,7 @@ func main() {
 			ledControl <- GREENSLOW // Set LED to green slow blink to indicate hotspot started and waiting for configuration
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
+		ledControl <- GREENON // Set LED to green slow blink to indicate waiting for WiFi configuration
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
 		ledControl <- GREENON // Set LED to green on to indicate WiFi is configured and connected
