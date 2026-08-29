@@ -44,7 +44,7 @@ func blinkLight(led *LEDGPIO, ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-ctx.Done():
-			led.On() // Ensure LED is on when stopping
+			led.Off() // Ensure LED is off when stopping
 			// logger.Debug("Blinking stopped.")
 			return // Exit goroutine
 		case <-ticker.C:

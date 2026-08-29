@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.6.4"
+const AppVersion = "0.6.5"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -110,16 +110,12 @@ func main() {
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
-		logger.Debug("GREENSLOW")
-		lightCMD <- GREENSLOW // Set LED to green fast blink to indicate waiting for WiFi configuration
 		if err := startHotspot(); err != nil {
 			lightCMD <- REDFAST // Set LED to red fast blink to indicate error
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 			time.Sleep(time.Duration(5) * time.Second)
 			os.Exit(1)
 		} else {
-			logger.Debug("GREENFAST")
-			lightCMD <- GREENFAST // Set LED to green slow blink to indicate hotspot started and waiting for configuration
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
 		// Hotspot is running. Waiting for user to configure using iOS app.
