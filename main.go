@@ -51,7 +51,7 @@ func main() {
 
 	// Wait for the LED to be initialized before sending commands to it
 	time.Sleep(time.Duration(1) * time.Second)
-	logger.Debug("Sending initial LED command to set LED to red slow blink to indicate startup.")
+	logger.Debug("REDSLOW")
 	ledControl <- REDSLOW // Set LED to red slow blink to indicate startup
 
 	// Retrieve hostname and log it
@@ -66,11 +66,13 @@ func main() {
 	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
+		logger.Debug("REDFAST")
 		ledControl <- REDFAST // Set LED to red fast blink to indicate error
 		logger.Error("Failed to set hostname. RED fast.", "err", err)
 	} else {
 		hostName, err = getHostname()
 		if err != nil {
+			logger.Debug("REDFAST")
 			ledControl <- REDFAST // Set LED to red fast blink to indicate error
 			logger.Error("Failed to retrieve hostname. RED fast.", "err", err)
 		} else {
@@ -96,21 +98,27 @@ func main() {
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
+		logger.Debug("GREENFAST")
 		ledControl <- GREENFAST // Set LED to green fast blink to indicate waiting for WiFi configuration
 		if err := startHotspot(); err != nil {
 			ledControl <- REDFAST // Set LED to red fast blink to indicate error
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 		} else {
+			logger.Debug("GREENSLOW")
 			ledControl <- GREENSLOW // Set LED to green slow blink to indicate hotspot started and waiting for configuration
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
+		logger.Debug("GREENON")
 		ledControl <- GREENON // Set LED to green slow blink to indicate waiting for WiFi configuration
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
+		logger.Debug("GREENON")
 		ledControl <- GREENON // Set LED to green on to indicate WiFi is configured and connected
 	}
 
 	// Start the REST service in a separate goroutine
+	// Starts now in order to handle Hotspot configuration if needed.
+	// If WiFi is already configured, the REST service will still be available for other requests.
 	go restService(ctx, &wg, logger)
 
 	// logger.Info(fmt.Sprintf("WiFi connected to %s", currentWiFi.SSID))
@@ -119,9 +127,11 @@ func main() {
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
+		logger.Debug("GREENON")
 		ledControl <- GREENON // Set LED to green on to indicate WiFi is configured and connected
 		logger.Info("Initializing: Internet access confirmed")
 	} else {
+		logger.Debug("GREENSLOW")
 		ledControl <- GREENSLOW // Set LED to green slow to indicate WiFi is configured but no Internet access
 		logger.Info("Initializing: Only localhost access available. No Internet.")
 	}
