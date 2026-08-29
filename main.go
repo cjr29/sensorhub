@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.6.2"
+const AppVersion = "0.6.3"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -44,8 +44,8 @@ func main() {
 	logger.Debug("GPIO bus is configured")
 
 	// Create activity Light and other layout status lights and button
-	activityLight = NewGPIOLED("Activity", GREEN)
-	wifiLight = NewGPIOLED("WiFi", RED)
+	redLight = NewGPIOLED("Activity", RED)
+	greenLight = NewGPIOLED("WiFi", GREEN)
 
 	// Channel for comman ding the light control goroutine to change the LED state
 	lightCMD := make(chan int)
@@ -76,14 +76,19 @@ func main() {
 		logger.Debug("REDFAST")
 		lightCMD <- REDFAST // Set LED to red fast blink to indicate error
 		logger.Error("Failed to set hostname. RED fast.", "err", err)
+		time.Sleep(time.Duration(5) * time.Second)
+		os.Exit(1)
 	} else {
 		hostName, err = getHostname()
 		if err != nil {
 			logger.Debug("REDFAST")
 			lightCMD <- REDFAST // Set LED to red fast blink to indicate error
 			logger.Error("Failed to retrieve hostname. RED fast.", "err", err)
+			time.Sleep(time.Duration(5) * time.Second)
+			os.Exit(1)
 		} else {
 			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
+			lightCMD <- GREENFAST
 		}
 	}
 	lightCMD <- GREENFAST // Set LED to green fast blink to indicate hostname set and ready for Wi-Fi configuration
@@ -105,18 +110,21 @@ func main() {
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
-		logger.Debug("GREENFAST")
-		lightCMD <- GREENFAST // Set LED to green fast blink to indicate waiting for WiFi configuration
+		logger.Debug("GREENSLOW")
+		lightCMD <- GREENSLOW // Set LED to green fast blink to indicate waiting for WiFi configuration
 		if err := startHotspot(); err != nil {
 			lightCMD <- REDFAST // Set LED to red fast blink to indicate error
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
+			time.Sleep(time.Duration(5) * time.Second)
+			os.Exit(1)
 		} else {
-			logger.Debug("GREENSLOW")
-			lightCMD <- GREENSLOW // Set LED to green slow blink to indicate hotspot started and waiting for configuration
+			logger.Debug("GREENFAST")
+			lightCMD <- GREENFAST // Set LED to green slow blink to indicate hotspot started and waiting for configuration
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
-		logger.Debug("GREENON")
-		lightCMD <- GREENON // Set LED to green slow blink to indicate waiting for WiFi configuration
+		// Hotspot is running. Waiting for user to configure using iOS app.
+		logger.Debug("GREENFAST")
+		lightCMD <- GREENFAST // Set LED to green fast blink to indicate waiting for WiFi configuration
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
 		logger.Debug("GREENON")

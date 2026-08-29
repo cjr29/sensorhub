@@ -24,8 +24,8 @@ const (
 const RED = "GPIO23"
 const GREEN = "GPIO17"
 
-var activityLight *LEDGPIO
-var wifiLight *LEDGPIO
+var redLight *LEDGPIO
+var greenLight *LEDGPIO
 
 // Primary function to cause an LED to blink or remain steady on or off.
 // Since the LED has two colors, red and green, the LED can be set to red, green, or off.
@@ -69,8 +69,8 @@ func lightControl(ctx context.Context, cmd chan int) {
 		case <-ctx.Done():
 			// Turn off the LED before exiting.
 			stopBlink()
-			releasePin(activityLight.Pin)
-			releasePin(wifiLight.Pin)
+			releasePin(redLight.Pin)
+			releasePin(greenLight.Pin)
 			return
 
 		case newState := <-cmd:
@@ -82,11 +82,15 @@ func lightControl(ctx context.Context, cmd chan int) {
 						stopBlink()
 					}
 					rate = 0
+					redLight.Off()
+					greenLight.Off()
 				case REDON:
 					if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
 						stopBlink()
 					}
 					rate = 0
+					greenLight.Off()
+					redLight.On()
 				case GREENON:
 					if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
 						stopBlink()
@@ -95,19 +99,19 @@ func lightControl(ctx context.Context, cmd chan int) {
 				case REDSLOW:
 					stopBlink()
 					rate = SLOW
-					go blinkLight(activityLight, ctxBlink, rate)
+					go blinkLight(redLight, ctxBlink, rate)
 				case GREENSLOW:
 					stopBlink()
 					rate = SLOW
-					go blinkLight(wifiLight, ctxBlink, rate)
+					go blinkLight(greenLight, ctxBlink, rate)
 				case REDFAST:
 					stopBlink()
 					rate = FAST
-					go blinkLight(activityLight, ctxBlink, rate)
+					go blinkLight(redLight, ctxBlink, rate)
 				case GREENFAST:
 					stopBlink()
 					rate = FAST
-					go blinkLight(wifiLight, ctxBlink, rate)
+					go blinkLight(greenLight, ctxBlink, rate)
 				default:
 					logger.Error("Invalid LED state", "state", currentState)
 				}
