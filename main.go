@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.6.8"
+const AppVersion = "0.7.0"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -27,9 +27,7 @@ var lightCMD = make(chan int, 5)
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
-	ctxLight, stopLight := context.WithCancel(context.Background())
 	defer stop()
-	defer stopLight()
 	var wg sync.WaitGroup
 
 	configureLogging()
@@ -49,16 +47,14 @@ func main() {
 	logger.Debug("GPIO bus is configured")
 
 	// Create activity Light and other layout status lights and button
-	redLight = NewGPIOLED("Red Light", RED)
-	greenLight = NewGPIOLED("Green Light", GREEN)
+	redLight := NewGPIOLED("Red Light", RED)
+	greenLight := NewGPIOLED("Green Light", GREEN)
+	leds := InitLEDController(redLight, greenLight)
 
 	logger.Debug("Starting activity light background thread...")
 
-	// // Start activity light in a goroutine
-	go lightControl(ctxLight, lightCMD)
-
 	logger.Debug("REDSLOW")
-	lightCMD <- REDSLOW // Set LED to red slow blink to indicate startup
+	leds.SetState(REDSLOW)
 	time.Sleep(time.Duration(5) * time.Second)
 
 	// Retrieve hostname and log it
@@ -74,7 +70,7 @@ func main() {
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
 		logger.Debug("REDFAST")
-		lightCMD <- REDFAST // Set LED to red fast blink to indicate error
+		leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 		logger.Error("Failed to set hostname. RED fast.", "err", err)
 		time.Sleep(time.Duration(5) * time.Second)
 		os.Exit(1)
@@ -87,7 +83,7 @@ func main() {
 		} else {
 			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
 			logger.Debug("GREENFAST")
-			lightCMD <- GREENFAST
+			leds.SetState(GREENFAST)
 		}
 	}
 
@@ -109,7 +105,7 @@ func main() {
 	if !wifiConfigured() {
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
 		if err := startHotspot(); err != nil {
-			lightCMD <- REDFAST // Set LED to red fast blink to indicate error
+			leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 			time.Sleep(time.Duration(5) * time.Second)
 			os.Exit(1)
@@ -118,11 +114,11 @@ func main() {
 		}
 		// Hotspot is running. Waiting for user to configure using iOS app.
 		logger.Debug("GREENFAST")
-		lightCMD <- GREENFAST // Set LED to green fast blink to indicate waiting for WiFi configuration
+		leds.SetState(GREENFAST) // Set LED to green fast blink to indicate waiting for WiFi configuration
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
 		logger.Debug("GREENON")
-		lightCMD <- GREENON // Set LED to green on to indicate WiFi is configured and connected
+		leds.SetState(GREENON) // Set LED to green on to indicate WiFi is configured and connected
 	}
 
 	// Start the REST service in a separate goroutine
@@ -133,11 +129,11 @@ func main() {
 	// See if Internet (remote) access is available
 	if hasInternet() {
 		logger.Debug("GREENON")
-		lightCMD <- GREENON // Set LED to green on to indicate WiFi is configured and connected
+		leds.SetState(GREENON) // Set LED to green on to indicate WiFi is configured and connected
 		logger.Info("Initializing: Internet access confirmed")
 	} else {
 		logger.Debug("GREENSLOW")
-		lightCMD <- GREENSLOW // Set LED to green slow to indicate WiFi is configured but no Internet access
+		leds.SetState(GREENSLOW) // Set LED to green slow to indicate WiFi is configured but no Internet access
 		logger.Info("Initializing: Only localhost access available. No Internet.")
 	}
 
@@ -168,12 +164,18 @@ func main() {
 		case syscall.SIGTERM:
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
-			stopLight()
+			// stopLight()
+			leds.Close()
+			releasePin(redLight.Pin)
+			releasePin(greenLight.Pin)
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
-			stopLight()
+			// stopLight()
+			leds.Close()
+			releasePin(redLight.Pin)
+			releasePin(greenLight.Pin)
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGHUP:
