@@ -108,7 +108,6 @@ func main() {
 
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
-		leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
 		if err := startHotspot(); err != nil {
 			// leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
@@ -189,14 +188,8 @@ func main() {
 				logger.Info("Reopened log file after SIGHUP")
 			}
 		}
-		if internet {
-			leds.SetState(GREENON)
-		} else {
-			if wifi {
-				leds.SetState(GREENSLOW)
-			} else {
-				leds.SetState(GREENFAST)
-			}
+		if !internet {
+			leds.SetState(GREENSLOW)
 		}
 	}
 }

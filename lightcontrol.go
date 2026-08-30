@@ -66,7 +66,7 @@ func (c *LightController) SetState(newState int) {
 	}
 	// Stop any existing blinking goroutine and turn off LEDs before changing the LEDs.
 	c.Close()
-
+	c.currentState = newState
 	switch newState {
 	case OFF:
 		c.red.Off()
@@ -94,9 +94,6 @@ func (c *LightController) SetState(newState int) {
 		logger.Error("Invalid LED state", "state", newState)
 		return
 	}
-
-	logger.Debug(fmt.Sprintf("LED state: %v", newState))
-	c.currentState = newState
 }
 
 func (c *LightController) startBlink(led *LEDGPIO, rateHz float64) {
