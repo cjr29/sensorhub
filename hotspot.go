@@ -99,7 +99,6 @@ func runWiFiViaHotspot() {
 	}
 	// WiFi Connected
 	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
-	lightCMD <- GREENON
 }
 
 func loginWiFiViaHotspot() {

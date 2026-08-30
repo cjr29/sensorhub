@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.8.8" // Return to basic goroutine for lights and only call from main
+const AppVersion = "0.8.9" // Return to basic goroutine for lights and only call from main
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -20,9 +20,6 @@ const AppVersion = "0.8.8" // Return to basic goroutine for lights and only call
 
 var hostName string
 var busConfigured bool = false
-
-// Channel for comman ding the light control goroutine to change the LED state
-var lightCMD = make(chan int, 5)
 
 // Create activity Light and other layout status lights and button
 var redLight LEDGPIO
