@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.8.1" // Return to basic goroutine for lights and only call from main
+const AppVersion = "0.8.2" // Return to basic goroutine for lights and only call from main
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -77,7 +77,6 @@ func main() {
 	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
-		// leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 		logger.Error("Failed to set hostname. RED fast.", "err", err)
 		time.Sleep(time.Duration(5) * time.Second)
 		os.Exit(1)
@@ -156,6 +155,8 @@ func main() {
 		// add more signals you care about
 	)
 	defer signal.Stop(stopChannel)
+
+	leds.SetState(GREENON)
 
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
