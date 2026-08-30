@@ -29,6 +29,12 @@ var redLight LEDGPIO
 var greenLight LEDGPIO
 var leds LightController
 
+// Global Internet status flag
+var internet bool = false
+
+// Global WiFi status flag
+var wifi bool = false
+
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
@@ -181,6 +187,15 @@ func main() {
 				logger.Error("Failed to reopen log file", "err", err)
 			} else {
 				logger.Info("Reopened log file after SIGHUP")
+			}
+		}
+		if internet {
+			leds.SetState(GREENON)
+		} else {
+			if wifi {
+				leds.SetState(GREENSLOW)
+			} else {
+				leds.SetState(GREENFAST)
 			}
 		}
 	}

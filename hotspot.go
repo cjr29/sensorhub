@@ -477,8 +477,10 @@ func hasInternet() bool {
 	cmd := exec.Command("ping", "-c", "1", "-W", "2", "8.8.8.8")
 	err := cmd.Run()
 	if err != nil {
+		internet = false
 		return false
 	} else {
+		internet = true
 		return true
 	}
 }
@@ -491,12 +493,14 @@ func wifiConfigured() bool {
 	if err != nil {
 		// WiFi not configured
 		logger.Debug("Unable to find or read config file. WiFi not configured.")
+		wifi = false
 		return false
 	} else {
 		// // Has an SSID and PWD. Try opening a connection.
 		// err = connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
 		// if err == nil {
 		// 	// WiFi up
+		wifi = true
 		logger.Debug(fmt.Sprintf("WiFi preconfigured for SSID %s", currentWiFi.SSID))
 		// 	return true
 		// } else {
