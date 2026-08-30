@@ -56,7 +56,7 @@ func main() {
 	var leds = initLightController(redLight, greenLight)
 	logger.Debug("LED controller and red/green lights configured.")
 
-	leds.SetState(REDON)
+	leds.SetState(REDSLOW)
 	time.Sleep(time.Duration(2) * time.Second)
 
 	// Retrieve hostname and log it
@@ -116,6 +116,7 @@ func main() {
 
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
+		leds.SetState(GREENON)
 	}
 
 	// Start the REST service in a separate goroutine
