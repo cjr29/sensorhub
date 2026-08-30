@@ -145,7 +145,6 @@ func loginWiFiViaHotspot() {
 	}
 	// WiFi Connected
 	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
-	leds.SetState(GREENSLOW) // Set light to slow green to indicate we have wifi connection
 	wifi = true
 }
 
@@ -277,7 +276,6 @@ func connectToSSID(ssid string, pwd string) error {
 	}
 	// WiFi Connected
 	logger.Info(fmt.Sprintf("Successfully connected to the WiFi network %s", ssid))
-	leds.SetState(GREENSLOW)
 
 	return nil
 }
