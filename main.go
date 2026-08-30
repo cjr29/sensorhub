@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.8.3" // Return to basic goroutine for lights and only call from main
+const AppVersion = "0.8.4" // Return to basic goroutine for lights and only call from main
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -121,6 +121,7 @@ func main() {
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
 		leds.SetState(GREENON)
+		wifi = true
 	}
 
 	// Start the REST service in a separate goroutine
@@ -132,8 +133,10 @@ func main() {
 	if hasInternet() {
 		// leds.SetState(GREENON) // Set LED to green on to indicate WiFi is configured and connected
 		logger.Info("Initializing: Internet access confirmed")
+		internet = true
 	} else {
 		logger.Info("Initializing: Only localhost access available. No Internet.")
+		internet = false
 	}
 
 	/************************************************************************************/
@@ -155,8 +158,6 @@ func main() {
 		// add more signals you care about
 	)
 	defer signal.Stop(stopChannel)
-
-	leds.SetState(GREENON)
 
 	// Main program loop watching for system control signals and either reopening logs or terminating processing
 	for {
