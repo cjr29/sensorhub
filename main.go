@@ -188,10 +188,5 @@ func main() {
 				logger.Info("Reopened log file after SIGHUP")
 			}
 		}
-		if !internet {
-			leds.SetState(GREENSLOW)
-		} else {
-			leds.SetState(GREENON)
-		}
 	}
 }
