@@ -256,7 +256,7 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Tell hardware we are on line
-	leds.SetState(GREENON)
+	leds.SetState(GREENFAST)
 }
 
 /****************** PATCH HANDLERS ******************/
