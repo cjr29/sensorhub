@@ -50,6 +50,46 @@ var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templ
 
 var currentWiFi = WiFi{}
 
+// Checks to see if WiFi has already been configured, and if so, restarts the connection
+func wifiConfigured() bool {
+	logger.Debug("Entering wifiConfigured.")
+	// Does config file exist?
+	_, err := currentWiFi.getSSIDPWD()
+	if err != nil {
+		// WiFi not configured
+		logger.Debug("Unable to find or read config file. WiFi not configured.")
+		wifi = false
+		return false
+	} else {
+		wifi = true
+		logger.Debug(fmt.Sprintf("WiFi preconfigured for SSID %s", currentWiFi.SSID))
+		return true
+	}
+}
+
+// Configures and enables the Pi's native hotspot using nmcli
+func startHotspot() error {
+	logger.Debug("Entered startHotspot")
+	// Be sure that the hotspot connection profile exists, create it if it does not exist
+	exists := connectionExists(HotspotConnName)
+	if exists {
+		logger.Debug("SensorHubHotspot not active. Bring it up.")
+		return exec.Command("sudo", "nmcli", "connection", "up", HotspotConnName).Run()
+	} else {
+		logger.Debug("SensorHubHotspot profile does not exist. Create it.")
+		// Create the new hotspot network profile and start it
+		// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
+		err := addHotspotConnection(HotspotConnName, HotspotSSID, HotspotPWD)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Error creating hotspot connection: %s", err))
+			return err
+		}
+		logger.Debug(fmt.Sprintf("Hotspot connection %s for SSID %s is up.", HotspotConnName, HotspotSSID))
+	}
+	return nil
+}
+
+
 // loginWiFiViaHotspot starts a temporary hotspot,
 // launches the restservice to monitor for configuration request,
 // collects selected WiFi SSID and password,
@@ -145,29 +185,6 @@ func loginWiFiViaHotspot() {
 	// WiFi Connected
 	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
 	wifi = true
-}
-
-// Configures and enables the Pi's native hotspot using nmcli
-func startHotspot() error {
-	logger.Debug("Entered startHotspot")
-	// Be sure that the hotspot connection profile exists, create it if it does not exist
-	leds.SetState(GREENFAST)
-	exists := connectionExists(HotspotConnName)
-	if exists {
-		logger.Debug("SensorHubHotspot not active. Bring it up.")
-		return exec.Command("sudo", "nmcli", "connection", "up", HotspotConnName).Run()
-	} else {
-		logger.Debug("SensorHubHotspot profile does not exist. Create it.")
-		// Create the new hotspot network profile and start it
-		// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
-		err := addHotspotConnection(HotspotConnName, HotspotSSID, HotspotPWD)
-		if err != nil {
-			logger.Error(fmt.Sprintf("Error creating hotspot connection: %s", err))
-			return err
-		}
-		logger.Debug(fmt.Sprintf("Hotspot connection %s for SSID %s is up.", HotspotConnName, HotspotSSID))
-	}
-	return nil
 }
 
 // Shuts down the temporary hotspot network
@@ -484,33 +501,6 @@ func hasInternet() bool {
 		return false
 	} else {
 		internet = true
-		return true
-	}
-}
-
-// Checks to see if WiFi has already been configured, and if so, restarts the connection
-func wifiConfigured() bool {
-	logger.Debug("Entering wifiConfigured.")
-	// Does config file exist?
-	_, err := currentWiFi.getSSIDPWD()
-	if err != nil {
-		// WiFi not configured
-		logger.Debug("Unable to find or read config file. WiFi not configured.")
-		wifi = false
-		return false
-	} else {
-		// // Has an SSID and PWD. Try opening a connection.
-		// err = connectToWiFi(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
-		// if err == nil {
-		// 	// WiFi up
-		wifi = true
-		logger.Debug(fmt.Sprintf("WiFi preconfigured for SSID %s", currentWiFi.SSID))
-		// 	return true
-		// } else {
-		// 	// Unable to reopen wifi using existing configuration
-		// 	logger.Debug(fmt.Sprintf("Unable to open WiFi with existing configuration for SSID %s", currentWiFi.SSID))
-		// 	return false
-		// }
 		return true
 	}
 }
