@@ -255,6 +255,8 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 		logger.Error(fmt.Sprintf("Failed to restart avahi-daemon: %v", err))
 	}
 
+	// Tell hardware we are on line
+	leds.SetState(GREENON)
 }
 
 /****************** PATCH HANDLERS ******************/
