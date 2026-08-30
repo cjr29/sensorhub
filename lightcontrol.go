@@ -76,24 +76,31 @@ func (c *LightController) SetState(newState int) {
 	case OFF:
 		c.red.Off()
 		c.green.Off()
+		logger.Debug("SetState to OFF")
 
 	case REDON:
 		c.red.On()
+		logger.Debug("SetState to REDON")
 
 	case GREENON:
 		c.green.On()
+		logger.Debug("SetState to GREENON")
 
 	case REDSLOW:
 		go blink(c.red, ctxBlink, SLOW)
+		logger.Debug("SetState to REDSLOW")
 
 	case GREENSLOW:
 		go blink(c.green, ctxBlink, SLOW)
+		logger.Debug("SetState to GREENSLOW")
 
 	case REDFAST:
 		go blink(c.red, ctxBlink, FAST)
+		logger.Debug("SetState to REDFAST")
 
 	case GREENFAST:
 		go blink(c.green, ctxBlink, FAST)
+		logger.Debug("SetState to GREENFAST")
 
 	default:
 		logger.Error("Invalid LED state", "state", newState)
