@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.8.11" // Return to basic goroutine for lights and only call from main
+const AppVersion = "0.8.12" // Return to basic goroutine for lights and only call from main
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -105,7 +105,6 @@ func main() {
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
-		leds.SetState(GREENFAST)
 		if err := startHotspot(); err != nil {
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 			time.Sleep(time.Duration(5) * time.Second)
@@ -116,7 +115,6 @@ func main() {
 		// Hotspot is running. Waiting for user to configure using iOS app.
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
-		leds.SetState(GREENON)
 		wifi = true
 	}
 
