@@ -25,7 +25,8 @@ const (
 
 var (
 	controller *LightController
-	stopLight  context.CancelFunc
+	stopBlink  context.CancelFunc
+	ctxBlink   context.Context
 )
 
 // LightController is the singleton responsible for controlling both LEDs.
@@ -44,7 +45,7 @@ func initLightController(red, green *LEDGPIO) *LightController {
 		green:        green,
 		currentState: OFF,
 	}
-	stopLight = nil
+	ctxBlink, stopBlink = context.WithCancel(context.Background())
 	return controller
 }
 
@@ -64,9 +65,13 @@ func (c *LightController) SetState(newState int) {
 	if newState == c.currentState {
 		return
 	}
-	// Stop any existing blinking goroutine and turn off LEDs before changing the LEDs.
-	c.Close()
+	if c.currentState == REDSLOW || c.currentState == REDFAST || c.currentState == GREENSLOW || c.currentState == GREENFAST {
+		stopBlink()
+	}
+	c.red.Off()
+	c.green.Off()
 	c.currentState = newState
+
 	switch newState {
 	case OFF:
 		c.red.Off()
@@ -79,46 +84,21 @@ func (c *LightController) SetState(newState int) {
 		c.green.On()
 
 	case REDSLOW:
-		c.startBlink(c.red, SLOW)
+		go blink(c.red, ctxBlink, SLOW)
 
 	case GREENSLOW:
-		c.startBlink(c.green, SLOW)
+		go blink(c.green, ctxBlink, SLOW)
 
 	case REDFAST:
-		c.startBlink(c.red, FAST)
+		go blink(c.red, ctxBlink, FAST)
 
 	case GREENFAST:
-		c.startBlink(c.green, FAST)
+		go blink(c.green, ctxBlink, FAST)
 
 	default:
 		logger.Error("Invalid LED state", "state", newState)
 		return
 	}
-}
-
-func (c *LightController) startBlink(led *LEDGPIO, rateHz float64) {
-	if stopLight != nil {
-		stopLight()
-		stopLight = nil
-	}
-	c.red.Off()
-	c.green.Off()
-	c.currentState = OFF
-	// Create new cancel context
-	ctx, cancel := context.WithCancel(context.Background())
-	stopLight = cancel
-	go blink(led, ctx, rateHz)
-}
-
-// Close stops blinking and turns both LEDs off.
-func (c *LightController) Close() {
-	if stopLight != nil {
-		stopLight()
-		stopLight = nil
-	}
-	c.red.Off()
-	c.green.Off()
-	c.currentState = OFF
 }
 
 // blink runs in a separate goroutine.
@@ -153,6 +133,12 @@ func blink(led *LEDGPIO, ctx context.Context, rateHz float64) {
 			led.Toggle()
 		}
 	}
+}
+
+func (c *LightController) Close() {
+	stopBlink()
+	releasePin(c.red.Pin)
+	releasePin(c.green.Pin)
 }
 
 func releasePin(pin gpio.PinOut) {

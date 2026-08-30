@@ -166,16 +166,16 @@ func main() {
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
 			// stopLight()
 			leds.Close()
-			releasePin(redLight.Pin)
-			releasePin(greenLight.Pin)
+			// releasePin(redLight.Pin)
+			// releasePin(greenLight.Pin)
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
 			// stopLight()
 			leds.Close()
-			releasePin(redLight.Pin)
-			releasePin(greenLight.Pin)
+			// releasePin(redLight.Pin)
+			// releasePin(greenLight.Pin)
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGHUP:
@@ -190,6 +190,8 @@ func main() {
 		}
 		if !internet {
 			leds.SetState(GREENSLOW)
+		} else {
+			leds.SetState(GREENON)
 		}
 	}
 }
