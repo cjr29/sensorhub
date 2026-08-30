@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.7.1"
+const AppVersion = "0.7.2"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -25,9 +25,9 @@ var busConfigured bool = false
 var lightCMD = make(chan int, 5)
 
 // Create activity Light and other layout status lights and button
-var redLight = NewGPIOLED("Red Light", RED)
-var greenLight = NewGPIOLED("Green Light", GREEN)
-var leds = InitLEDController(redLight, greenLight)
+var redLight LEDGPIO
+var greenLight LEDGPIO
+var leds LEDController
 
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
@@ -50,6 +50,9 @@ func main() {
 		busConfigured = true
 	}
 	logger.Debug("GPIO bus is configured")
+	var redLight = NewGPIOLED("Red Light", RED)
+	var greenLight = NewGPIOLED("Green Light", GREEN)
+	var leds = InitLEDController(redLight, greenLight)
 
 	logger.Debug("GREENFAST")
 	leds.SetState(GREENFAST)
