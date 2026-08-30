@@ -102,7 +102,7 @@ func main() {
 
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
-		// leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
+		leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
 		if err := startHotspot(); err != nil {
 			// leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
