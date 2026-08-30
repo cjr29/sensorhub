@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.7.6" // Turn off LED code
+const AppVersion = "0.7.7" // Turn on GREENFAST only. No other changes.
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -55,7 +55,7 @@ func main() {
 	var leds = InitLEDController(redLight, greenLight)
 	logger.Debug("LED controller and red/green lights configured.")
 
-	// leds.SetState(GREENFAST)
+	leds.SetState(GREENFAST)
 	time.Sleep(time.Duration(2) * time.Second)
 
 	// Retrieve hostname and log it
@@ -90,7 +90,6 @@ func main() {
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
 	logger.Info("Verify that weather.db exists and is writable. If not, create it.")
 	db, err = initDB(dbPath)
-	// db, err = OpenOrCreateSQLite(dbPath)
 	if err != nil {
 		logger.Error(fmt.Sprintf("DB init failed: %v", err))
 	}
