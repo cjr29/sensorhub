@@ -139,10 +139,14 @@ func loginWiFiViaHotspot() {
 	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
 	if err != nil {
 		// Could not connect to WiFi, loop until success
+		logger.Debug("Failed to connect to WiFi. Try again in 5 seconds.")
+		time.Sleep(time.Duration(5) * time.Second)
 		loginWiFiViaHotspot()
 	}
 	// WiFi Connected
 	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
+	leds.SetState(GREENSLOW) // Set light to slow green to indicate we have wifi connection
+	wifi = true
 }
 
 // Configures and enables the Pi's native hotspot using nmcli
@@ -169,7 +173,7 @@ func startHotspot() error {
 
 // Shuts down the temporary hotspot network
 func stopHotspot() error {
-	logger.Debug("Entered stopHotspot")
+	// logger.Debug("Entered stopHotspot")
 	logger.Debug(fmt.Sprintf("Shut down hotspot with connection name %s", HotspotConnName))
 	return exec.Command("sudo", "nmcli", "connection", "down", HotspotConnName).Run()
 }
