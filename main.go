@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.7.0"
+const AppVersion = "0.7.1"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -23,6 +23,11 @@ var busConfigured bool = false
 
 // Channel for comman ding the light control goroutine to change the LED state
 var lightCMD = make(chan int, 5)
+
+// Create activity Light and other layout status lights and button
+var redLight = NewGPIOLED("Red Light", RED)
+var greenLight = NewGPIOLED("Green Light", GREEN)
+var leds = InitLEDController(redLight, greenLight)
 
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
@@ -46,16 +51,9 @@ func main() {
 	}
 	logger.Debug("GPIO bus is configured")
 
-	// Create activity Light and other layout status lights and button
-	redLight := NewGPIOLED("Red Light", RED)
-	greenLight := NewGPIOLED("Green Light", GREEN)
-	leds := InitLEDController(redLight, greenLight)
-
-	logger.Debug("Starting activity light background thread...")
-
-	logger.Debug("REDSLOW")
-	leds.SetState(REDSLOW)
-	time.Sleep(time.Duration(5) * time.Second)
+	logger.Debug("GREENFAST")
+	leds.SetState(GREENFAST)
+	time.Sleep(time.Duration(2) * time.Second)
 
 	// Retrieve hostname and log it
 	var err error
@@ -78,6 +76,8 @@ func main() {
 		hostName, err = getHostname()
 		if err != nil {
 			logger.Error("Failed to retrieve hostname.", "err", err)
+			logger.Debug("REDFAST")
+			leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 			time.Sleep(time.Duration(5) * time.Second)
 			os.Exit(1)
 		} else {
@@ -113,8 +113,8 @@ func main() {
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
 		// Hotspot is running. Waiting for user to configure using iOS app.
-		logger.Debug("GREENFAST")
-		leds.SetState(GREENFAST) // Set LED to green fast blink to indicate waiting for WiFi configuration
+		logger.Debug("GREENSLOW")
+		leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
 		logger.Debug("GREENON")
@@ -143,9 +143,9 @@ func main() {
 	// Start the background processing threads now that we are connected to WiFi
 	logger.Info(">>>>> Starting remaining background processes")
 
-	go processSensorData(ctx, &wg, logger)     // Background thread to process sensor data
-	go removeExpiredSensors(ctx, &wg, logger)  // Background thread to process expired sensors
-	go monitorWiFi(ctx, &wg, lightCMD, logger) // Background thread to monitor Wi-Fi connection and handle setup if needed
+	go processSensorData(ctx, &wg, logger)    // Background thread to process sensor data
+	go removeExpiredSensors(ctx, &wg, logger) // Background thread to process expired sensors
+	go monitorWiFi(ctx, &wg, logger)          // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	// Handle other signals while waiting for goroutines to halt.
 	stopChannel := make(chan os.Signal, 1)
