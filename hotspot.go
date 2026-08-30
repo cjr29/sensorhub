@@ -153,6 +153,7 @@ func loginWiFiViaHotspot() {
 func startHotspot() error {
 	logger.Debug("Entered startHotspot")
 	// Be sure that the hotspot connection profile exists, create it if it does not exist
+	leds.SetState(GREENFAST)
 	exists := connectionExists(HotspotConnName)
 	if exists {
 		logger.Debug("SensorHubHotspot not active. Bring it up.")
@@ -276,6 +277,7 @@ func connectToSSID(ssid string, pwd string) error {
 	}
 	// WiFi Connected
 	logger.Info(fmt.Sprintf("Successfully connected to the WiFi network %s", ssid))
+	leds.SetState(GREENSLOW)
 
 	return nil
 }
