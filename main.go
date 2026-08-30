@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.7.3"
+const AppVersion = "0.7.4"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -53,9 +53,8 @@ func main() {
 	var redLight = NewGPIOLED("Red Light", RED)
 	var greenLight = NewGPIOLED("Green Light", GREEN)
 	var leds = InitLEDController(redLight, greenLight)
-	logger.Debug("LED controller and red/greed lights configured.")
+	logger.Debug("LED controller and red/green lights configured.")
 
-	logger.Debug("GREENFAST")
 	leds.SetState(GREENFAST)
 	time.Sleep(time.Duration(2) * time.Second)
 
@@ -71,7 +70,6 @@ func main() {
 	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
-		logger.Debug("REDFAST")
 		leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 		logger.Error("Failed to set hostname. RED fast.", "err", err)
 		time.Sleep(time.Duration(5) * time.Second)
@@ -80,7 +78,6 @@ func main() {
 		hostName, err = getHostname()
 		if err != nil {
 			logger.Error("Failed to retrieve hostname.", "err", err)
-			logger.Debug("REDFAST")
 			leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 			time.Sleep(time.Duration(5) * time.Second)
 			os.Exit(1)
@@ -105,7 +102,6 @@ func main() {
 
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
-		logger.Debug("GREENSLOW")
 		leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
 		if err := startHotspot(); err != nil {
@@ -129,7 +125,6 @@ func main() {
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
-		logger.Debug("GREENON")
 		leds.SetState(GREENON) // Set LED to green on to indicate WiFi is configured and connected
 		logger.Info("Initializing: Internet access confirmed")
 	} else {

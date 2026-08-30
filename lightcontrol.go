@@ -123,6 +123,7 @@ func (c *LEDController) SetState(newState int) {
 		return
 	}
 
+	logger.Debug(fmt.Sprintf("LED state: %v", newState))
 	c.currentState = newState
 }
 
