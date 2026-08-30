@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.7.4"
+const AppVersion = "0.7.6" // Turn off LED code
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -55,7 +55,7 @@ func main() {
 	var leds = InitLEDController(redLight, greenLight)
 	logger.Debug("LED controller and red/green lights configured.")
 
-	leds.SetState(GREENFAST)
+	// leds.SetState(GREENFAST)
 	time.Sleep(time.Duration(2) * time.Second)
 
 	// Retrieve hostname and log it
@@ -70,7 +70,7 @@ func main() {
 	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
-		leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
+		// leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 		logger.Error("Failed to set hostname. RED fast.", "err", err)
 		time.Sleep(time.Duration(5) * time.Second)
 		os.Exit(1)
@@ -78,7 +78,7 @@ func main() {
 		hostName, err = getHostname()
 		if err != nil {
 			logger.Error("Failed to retrieve hostname.", "err", err)
-			leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
+			// leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 			time.Sleep(time.Duration(5) * time.Second)
 			os.Exit(1)
 		} else {
@@ -102,10 +102,10 @@ func main() {
 
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
-		leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
+		// leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
 		if err := startHotspot(); err != nil {
-			leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
+			// leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 			time.Sleep(time.Duration(5) * time.Second)
 			os.Exit(1)
@@ -125,7 +125,7 @@ func main() {
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
-		leds.SetState(GREENON) // Set LED to green on to indicate WiFi is configured and connected
+		// leds.SetState(GREENON) // Set LED to green on to indicate WiFi is configured and connected
 		logger.Info("Initializing: Internet access confirmed")
 	} else {
 		logger.Info("Initializing: Only localhost access available. No Internet.")
