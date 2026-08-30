@@ -55,7 +55,7 @@ func main() {
 	var leds = InitLEDController(redLight, greenLight)
 	logger.Debug("LED controller and red/green lights configured.")
 
-	leds.SetState(GREENFAST)
+	// leds.SetState(GREENFAST)
 	time.Sleep(time.Duration(2) * time.Second)
 
 	// Retrieve hostname and log it
