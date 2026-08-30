@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.7.2"
+const AppVersion = "0.7.3"
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -53,6 +53,7 @@ func main() {
 	var redLight = NewGPIOLED("Red Light", RED)
 	var greenLight = NewGPIOLED("Green Light", GREEN)
 	var leds = InitLEDController(redLight, greenLight)
+	logger.Debug("LED controller and red/greed lights configured.")
 
 	logger.Debug("GREENFAST")
 	leds.SetState(GREENFAST)
@@ -85,8 +86,6 @@ func main() {
 			os.Exit(1)
 		} else {
 			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
-			logger.Debug("GREENFAST")
-			leds.SetState(GREENFAST)
 		}
 	}
 
@@ -106,6 +105,8 @@ func main() {
 
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 	if !wifiConfigured() {
+		logger.Debug("GREENSLOW")
+		leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
 		if err := startHotspot(); err != nil {
 			leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
@@ -116,12 +117,9 @@ func main() {
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
 		}
 		// Hotspot is running. Waiting for user to configure using iOS app.
-		logger.Debug("GREENSLOW")
-		leds.SetState(GREENSLOW) // Set LED to green slow blink to indicate waiting for WiFi configuration
+
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
-		logger.Debug("GREENON")
-		leds.SetState(GREENON) // Set LED to green on to indicate WiFi is configured and connected
 	}
 
 	// Start the REST service in a separate goroutine
@@ -135,8 +133,6 @@ func main() {
 		leds.SetState(GREENON) // Set LED to green on to indicate WiFi is configured and connected
 		logger.Info("Initializing: Internet access confirmed")
 	} else {
-		logger.Debug("GREENSLOW")
-		leds.SetState(GREENSLOW) // Set LED to green slow to indicate WiFi is configured but no Internet access
 		logger.Info("Initializing: Only localhost access available. No Internet.")
 	}
 

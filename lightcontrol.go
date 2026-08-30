@@ -11,7 +11,7 @@ import (
 
 const (
 	SLOW = 1 * time.Second
-	FAST = 4 * time.Second
+	FAST = 250 * time.Millisecond
 )
 
 const (
