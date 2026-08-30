@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.8.5" // Return to basic goroutine for lights and only call from main
+const AppVersion = "0.8.6" // Return to basic goroutine for lights and only call from main
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -147,7 +147,7 @@ func main() {
 
 	go processSensorData(ctx, &wg, logger)    // Background thread to process sensor data
 	go removeExpiredSensors(ctx, &wg, logger) // Background thread to process expired sensors
-	go monitorWiFi(ctx, &wg, logger)          // Background thread to monitor Wi-Fi connection and handle setup if needed
+	go monitorWiFi(ctx, &wg, logger, leds)    // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	// Handle other signals while waiting for goroutines to halt.
 	stopChannel := make(chan os.Signal, 1)
@@ -166,18 +166,16 @@ func main() {
 		case syscall.SIGTERM:
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
-			// stopLight()
 			leds.Close()
-			// releasePin(redLight.Pin)
-			// releasePin(greenLight.Pin)
+			releasePin(redLight.Pin)
+			releasePin(greenLight.Pin)
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
-			// stopLight()
 			leds.Close()
-			// releasePin(redLight.Pin)
-			// releasePin(greenLight.Pin)
+			releasePin(redLight.Pin)
+			releasePin(greenLight.Pin)
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGHUP:
