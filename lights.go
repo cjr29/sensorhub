@@ -8,6 +8,11 @@ import (
 	"periph.io/x/conn/v3/gpio/gpioreg"
 )
 
+const (
+	RED   = "GPIO23"
+	GREEN = "GPIO17"
+)
+
 type LEDGPIO struct {
 	Name     string
 	LineName string

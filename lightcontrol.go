@@ -3,15 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"periph.io/x/conn/v3/gpio"
 )
 
 const (
-	SLOW = 1 * time.Second
-	FAST = 250 * time.Millisecond
+	SLOW = 1
+	FAST = 4
 )
 
 const (
@@ -24,56 +23,36 @@ const (
 	GREENFAST
 )
 
-const (
-	RED   = "GPIO23"
-	GREEN = "GPIO17"
+var (
+	controller *LightController
+	stopLight  context.CancelFunc
 )
 
-/******************* Usage **********************/
-//	redLight := NewGPIOLED("Red Light", RED)
-//	greenLight := NewGPIOLED("Green Light", GREEN)
-//	leds := InitLEDController(redLight, greenLight)
-//  leds.SetState(REDON)
-//  leds.SetState(GREENSLOW)
-//  leds.SetState(OFF)
-
-// LEDController is the singleton responsible for controlling both LEDs.
-type LEDController struct {
-	red   *LEDGPIO
-	green *LEDGPIO
-
-	mu           sync.Mutex
+// LightController is the singleton responsible for controlling both LEDs.
+type LightController struct {
+	red          *LEDGPIO
+	green        *LEDGPIO
 	currentState int
-	cancelBlink  context.CancelFunc
-	blinkWG      sync.WaitGroup
 }
 
-var (
-	controller     *LEDController
-	controllerOnce sync.Once
-)
-
-// InitLEDController initializes the singleton exactly once.
+// InitLightController initializes the singleton exactly once.
 //
 // Call this after creating/opening the red and green LEDGPIO values.
-func InitLEDController(red, green *LEDGPIO) *LEDController {
-	controllerOnce.Do(func() {
-		controller = &LEDController{
-			red:          red,
-			green:        green,
-			currentState: OFF,
-		}
-	})
-
+func initLightController(red, green *LEDGPIO) *LightController {
+	controller = &LightController{
+		red:          red,
+		green:        green,
+		currentState: OFF,
+	}
+	stopLight = nil
 	return controller
 }
 
 // LEDControllerInstance returns the initialized singleton.
-func LEDControllerInstance() *LEDController {
+func LightControllerInstance() *LightController {
 	if controller == nil {
-		panic("LEDController has not been initialized; call InitLEDController first")
+		panic("LightController has not been initialized; call InitLightController first")
 	}
-
 	return controller
 }
 
@@ -81,20 +60,12 @@ func LEDControllerInstance() *LEDController {
 //
 // Valid states are:
 // OFF, REDON, GREENON, REDSLOW, GREENSLOW, REDFAST, GREENFAST.
-func (c *LEDController) SetState(newState int) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+func (c *LightController) SetState(newState int) {
 	if newState == c.currentState {
 		return
 	}
-
-	// Stop any existing blinking goroutine before changing the LEDs.
-	c.stopBlinkLocked()
-
-	// Always turn both LEDs off before applying the new state.
-	c.red.Off()
-	c.green.Off()
+	// Stop any existing blinking goroutine and turn off LEDs before changing the LEDs.
+	c.Off()
 
 	switch newState {
 	case OFF:
@@ -107,16 +78,16 @@ func (c *LEDController) SetState(newState int) {
 		c.green.On()
 
 	case REDSLOW:
-		c.startBlinkLocked(c.red, SLOW)
+		c.startBlink(c.red, SLOW)
 
 	case GREENSLOW:
-		c.startBlinkLocked(c.green, SLOW)
+		c.startBlink(c.green, SLOW)
 
 	case REDFAST:
-		c.startBlinkLocked(c.red, FAST)
+		c.startBlink(c.red, FAST)
 
 	case GREENFAST:
-		c.startBlinkLocked(c.green, FAST)
+		c.startBlink(c.green, FAST)
 
 	default:
 		logger.Error("Invalid LED state", "state", newState)
@@ -127,53 +98,51 @@ func (c *LEDController) SetState(newState int) {
 	c.currentState = newState
 }
 
-// startBlinkLocked starts blinking one LED.
-//
-// The caller must hold c.mu.
-func (c *LEDController) startBlinkLocked(led *LEDGPIO, interval time.Duration) {
-	ctx, cancel := context.WithCancel(context.Background())
-	c.cancelBlink = cancel
-
-	c.blinkWG.Add(1)
-	go func() {
-		defer c.blinkWG.Done()
-		blink(led, ctx, interval)
-	}()
-}
-
-// stopBlinkLocked stops the current blinking goroutine.
-//
-// The caller must hold c.mu.
-func (c *LEDController) stopBlinkLocked() {
-	if c.cancelBlink == nil {
-		return
+func (c *LightController) startBlink(led *LEDGPIO, rateHz float64) {
+	if stopLight != nil {
+		stopLight()
 	}
-
-	c.cancelBlink()
-	c.cancelBlink = nil
-
-	// Wait until the previous blinking goroutine has exited.
-	c.blinkWG.Wait()
+	ctx, cancel := context.WithCancel(context.Background())
+	stopLight = cancel
+	go blink(led, ctx, rateHz)
 }
 
 // Close stops blinking and turns both LEDs off.
-func (c *LEDController) Close() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.stopBlinkLocked()
-
+func (c *LightController) Off() {
+	if stopLight != nil {
+		stopLight()
+		stopLight = nil
+	}
 	c.red.Off()
 	c.green.Off()
 	c.currentState = OFF
 }
 
+// Close stops blinking and turns both LEDs off.
+func (c *LightController) Close() {
+	c.Off()
+}
+
 // blink runs in a separate goroutine.
-func blink(led *LEDGPIO, ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+func blink(led *LEDGPIO, ctx context.Context, rateHz float64) {
 
 	logger.Debug(fmt.Sprintf("Started blinking for %s.", led.Name))
+
+	if rateHz <= 0 {
+		return
+	}
+
+	// One complete cycle consists of an ON interval and an OFF interval.
+	halfPeriod := time.Duration(float64(time.Second) / (2 * rateHz))
+	if halfPeriod <= 0 {
+		return
+	}
+
+	ticker := time.NewTicker(halfPeriod)
+	defer ticker.Stop()
+
+	led.Off()
+	led.State = false
 
 	for {
 		select {

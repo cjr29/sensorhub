@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.7.7" // Turn on GREENFAST only. No other changes.
+const AppVersion = "0.8.0" // Return to basic goroutine for lights and only call from main
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -27,7 +27,7 @@ var lightCMD = make(chan int, 5)
 // Create activity Light and other layout status lights and button
 var redLight LEDGPIO
 var greenLight LEDGPIO
-var leds LEDController
+var leds LightController
 
 func main() {
 	// Create a context that will be canceled when SIGTERM signal is received
@@ -50,12 +50,13 @@ func main() {
 		busConfigured = true
 	}
 	logger.Debug("GPIO bus is configured")
+
 	var redLight = NewGPIOLED("Red Light", RED)
 	var greenLight = NewGPIOLED("Green Light", GREEN)
-	var leds = InitLEDController(redLight, greenLight)
+	var leds = initLightController(redLight, greenLight)
 	logger.Debug("LED controller and red/green lights configured.")
 
-	// leds.SetState(GREENFAST)
+	leds.SetState(REDON)
 	time.Sleep(time.Duration(2) * time.Second)
 
 	// Retrieve hostname and log it
