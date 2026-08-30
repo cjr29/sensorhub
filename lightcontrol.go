@@ -65,11 +65,12 @@ func (c *LightController) SetState(newState int) {
 		return
 	}
 	// Stop any existing blinking goroutine and turn off LEDs before changing the LEDs.
-	c.Off()
+	c.Close()
 
 	switch newState {
 	case OFF:
-		// Both LEDs are already off.
+		c.red.Off()
+		c.green.Off()
 
 	case REDON:
 		c.red.On()
@@ -101,14 +102,19 @@ func (c *LightController) SetState(newState int) {
 func (c *LightController) startBlink(led *LEDGPIO, rateHz float64) {
 	if stopLight != nil {
 		stopLight()
+		stopLight = nil
 	}
+	c.red.Off()
+	c.green.Off()
+	c.currentState = OFF
+	// Create new cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 	stopLight = cancel
 	go blink(led, ctx, rateHz)
 }
 
 // Close stops blinking and turns both LEDs off.
-func (c *LightController) Off() {
+func (c *LightController) Close() {
 	if stopLight != nil {
 		stopLight()
 		stopLight = nil
@@ -116,11 +122,6 @@ func (c *LightController) Off() {
 	c.red.Off()
 	c.green.Off()
 	c.currentState = OFF
-}
-
-// Close stops blinking and turns both LEDs off.
-func (c *LightController) Close() {
-	c.Off()
 }
 
 // blink runs in a separate goroutine.
