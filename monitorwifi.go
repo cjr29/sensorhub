@@ -24,7 +24,7 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, c
 				logger.Debug("Internet access confirmed")
 			} else {
 				internet = false
-				cmd<-GREENSLOW
+				cmd<-GREENON
 				logger.Debug("Only localhost access available. No Internet.")
 			}
 			time.Sleep(time.Duration(amt) * time.Second)
