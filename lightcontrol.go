@@ -101,7 +101,6 @@ func lightControl(ctx context.Context, cmd chan int) {
 					leds.red.Off()
 					leds.green.Off()
 					logger.Debug("SetState to OFF")
-
 				case REDON:
 					leds.red.On()
 					logger.Debug("SetState to REDON")
