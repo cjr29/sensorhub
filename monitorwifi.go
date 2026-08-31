@@ -21,11 +21,11 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, c
 			if hasInternet() {
 				internet = true
 				cmd<-GREENON
-				logger.Debug("Internet access confirmed")
+				// logger.Debug("Internet access confirmed")
 			} else {
 				internet = false
 				cmd<-REDON
-				logger.Debug("Only localhost access available. No Internet.")
+				// logger.Debug("Only localhost access available. No Internet.")
 			}
 			time.Sleep(time.Duration(amt) * time.Second)
 		}
