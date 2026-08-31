@@ -92,10 +92,11 @@ func lightControl(ctx context.Context, cmd chan int) {
 
 		case newState := <-cmd:
 			if newState != currentState {
-				currentState = newState
 				if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
 					stopBlink()
 				}
+				currentState = newState
+
 				switch currentState {
 				case OFF:
 					leds.red.Off()

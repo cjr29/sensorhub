@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.9.3" // Back to channel commands and goroutine
+const AppVersion = "0.9.4" // Back to channel commands and goroutine
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
