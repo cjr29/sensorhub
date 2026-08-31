@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.9.6" // Back to channel commands and goroutine
+const AppVersion = "0.9.7" // Back to channel commands and goroutine
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -166,6 +166,7 @@ func main() {
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
 			stopLight()
+			lightCmd<-OFF
 			releasePin(redLight.Pin)
 			releasePin(greenLight.Pin)
 			wg.Wait()

@@ -103,26 +103,35 @@ func lightControl(ctx context.Context, cmd chan int) {
 					leds.green.Off()
 					logger.Debug("SetState to OFF")
 				case REDON:
+					leds.green.Off()
 					leds.red.On()
 					logger.Debug("SetState to REDON")
 
 				case GREENON:
+					leds.red.Off()
 					leds.green.On()
 					logger.Debug("SetState to GREENON")
-
 				case REDSLOW:
+										leds.red.Off()
+					leds.green.Off()
 					go blink(leds.red, ctxBlink, SLOW)
 					logger.Debug("SetState to REDSLOW")
 
 				case GREENSLOW:
+										leds.red.Off()
+					leds.green.Off()
 					go blink(leds.green, ctxBlink, SLOW)
 					logger.Debug("SetState to GREENSLOW")
 
 				case REDFAST:
+										leds.red.Off()
+					leds.green.Off()
 					go blink(leds.red, ctxBlink, FAST)
 					logger.Debug("SetState to REDFAST")
 
 				case GREENFAST:
+										leds.red.Off()
+					leds.green.Off()
 					go blink(leds.green, ctxBlink, FAST)
 					logger.Debug("SetState to GREENFAST")
 
