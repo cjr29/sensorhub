@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.9.0" // Back to channel commands and goroutine
+const AppVersion = "0.9.1" // Back to channel commands and goroutine
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -20,6 +20,7 @@ const AppVersion = "0.9.0" // Back to channel commands and goroutine
 
 var hostName string
 var busConfigured bool = false
+
 // Channel for comman ing the light control goroutine to change the LED state
 var lightCmd = make(chan int, 5)
 
@@ -58,9 +59,9 @@ func main() {
 	// logger.Debug("LED controller and red/green lights configured.")
 
 	go lightControl(ctxLight, lightCmd)
+	time.Sleep(time.Duration(1) * time.Second)
 
-	lightCmd<-REDSLOW
-
+	lightCmd <- REDSLOW
 	time.Sleep(time.Duration(2) * time.Second)
 
 	// Retrieve hostname and log it
@@ -76,14 +77,14 @@ func main() {
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
 		logger.Error("Failed to set hostname. RED fast.", "err", err)
-		time.Sleep(time.Duration(5) * time.Second)
+		time.Sleep(time.Duration(1) * time.Second)
 		os.Exit(1)
 	} else {
 		hostName, err = getHostname()
 		if err != nil {
 			logger.Error("Failed to retrieve hostname.", "err", err)
 			// leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
-			time.Sleep(time.Duration(5) * time.Second)
+			time.Sleep(time.Duration(1) * time.Second)
 			os.Exit(1)
 		} else {
 			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
@@ -108,7 +109,7 @@ func main() {
 		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
 		if err := startHotspot(); err != nil {
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
-			time.Sleep(time.Duration(5) * time.Second)
+			time.Sleep(time.Duration(1) * time.Second)
 			os.Exit(1)
 		} else {
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
@@ -126,10 +127,8 @@ func main() {
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
-		logger.Info("Initializing: Internet access confirmed")
 		internet = true
 	} else {
-		logger.Info("Initializing: Only localhost access available. No Internet.")
 		internet = false
 	}
 
@@ -139,9 +138,9 @@ func main() {
 	// Start the background processing threads now that we are connected to WiFi
 	logger.Info(">>>>> Starting remaining background processes")
 
-	go processSensorData(ctx, &wg, logger)    // Background thread to process sensor data
-	go removeExpiredSensors(ctx, &wg, logger) // Background thread to process expired sensors
-	go monitorWiFi(ctx, &wg, logger, lightCmd)    // Background thread to monitor Wi-Fi connection and handle setup if needed
+	go processSensorData(ctx, &wg, logger)     // Background thread to process sensor data
+	go removeExpiredSensors(ctx, &wg, logger)  // Background thread to process expired sensors
+	go monitorWiFi(ctx, &wg, logger, lightCmd) // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	// Handle other signals while waiting for goroutines to halt.
 	stopChannel := make(chan os.Signal, 1)
