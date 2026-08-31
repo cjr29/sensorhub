@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.9.1" // Back to channel commands and goroutine
+const AppVersion = "0.9.2" // Back to channel commands and goroutine
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -59,10 +59,16 @@ func main() {
 	// logger.Debug("LED controller and red/green lights configured.")
 
 	go lightControl(ctxLight, lightCmd)
-	time.Sleep(time.Duration(1) * time.Second)
+	time.Sleep(time.Duration(5) * time.Second)
 
 	lightCmd <- REDSLOW
-	time.Sleep(time.Duration(2) * time.Second)
+	time.Sleep(time.Duration(5) * time.Second)
+
+	lightCmd <- GREENSLOW
+	time.Sleep(time.Duration(5) * time.Second)
+
+	lightCmd <- REDFAST
+	time.Sleep(time.Duration(5) * time.Second)
 
 	// Retrieve hostname and log it
 	var err error
