@@ -29,6 +29,11 @@ var (
 	ctxBlink   context.Context
 )
 
+// Create activity Light and other layout status lights and button
+var redLight LEDGPIO
+var greenLight LEDGPIO
+var leds LightController
+
 // LightController is the singleton responsible for controlling both LEDs.
 type LightController struct {
 	red          *LEDGPIO
@@ -57,54 +62,76 @@ func LightControllerInstance() *LightController {
 	return controller
 }
 
-// SetState changes the LED state.
-//
-// Valid states are:
-// OFF, REDON, GREENON, REDSLOW, GREENSLOW, REDFAST, GREENFAST.
-func (c *LightController) SetState(newState int) {
-	if newState == c.currentState {
-		return
-	}
-	if c.currentState == REDSLOW || c.currentState == REDFAST || c.currentState == GREENSLOW || c.currentState == GREENFAST {
-		stopBlink()
-	}
-	c.red.Off()
-	c.green.Off()
-	c.currentState = newState
+/*********** Main entry to goroutine that controls activity LEDs ***************/
+/*                   lightControl                                              */
+/*******************************************************************************/
+func lightControl(ctx context.Context, cmd chan int) {
+	var redLight = NewGPIOLED("Red Light", RED)
+	var greenLight = NewGPIOLED("Green Light", GREEN)
+	var leds = initLightController(redLight, greenLight)
+	var currentState int = OFF
 
-	switch newState {
-	case OFF:
-		c.red.Off()
-		c.green.Off()
-		logger.Debug("SetState to OFF")
+	logger.Debug("LED controller and red/green lights configured.")
 
-	case REDON:
-		c.red.On()
-		logger.Debug("SetState to REDON")
+	// Run a loop waiting for a channel command for lights
+	// commands: OFF, GREENON, REDON, GREENSLOW, GREENFAST, REDSLOW, REDFAST
+	// If done context command received, shuts off bloth leds and returns
 
-	case GREENON:
-		c.green.On()
-		logger.Debug("SetState to GREENON")
+	ctxBlink, stopBlink := context.WithCancel(context.Background())
 
-	case REDSLOW:
-		go blink(c.red, ctxBlink, SLOW)
-		logger.Debug("SetState to REDSLOW")
+	for {
+		select {
+		case <-ctx.Done():
+			// Turn off the LED before exiting.
+			stopBlink()
+			greenLight.Off()
+			redLight.Off()
+			releasePin(redLight.Pin)
+			releasePin(greenLight.Pin)
+			return
 
-	case GREENSLOW:
-		go blink(c.green, ctxBlink, SLOW)
-		logger.Debug("SetState to GREENSLOW")
+		case newState := <-cmd:
+			if newState != currentState {
+				currentState = newState
+				if currentState == REDSLOW || currentState == REDFAST || currentState == GREENSLOW || currentState == GREENFAST {
+					stopBlink()
+				}
+				switch currentState {
+				case OFF:
+					leds.red.Off()
+					leds.green.Off()
+					logger.Debug("SetState to OFF")
 
-	case REDFAST:
-		go blink(c.red, ctxBlink, FAST)
-		logger.Debug("SetState to REDFAST")
+				case REDON:
+					leds.red.On()
+					logger.Debug("SetState to REDON")
 
-	case GREENFAST:
-		go blink(c.green, ctxBlink, FAST)
-		logger.Debug("SetState to GREENFAST")
+				case GREENON:
+					leds.green.On()
+					logger.Debug("SetState to GREENON")
 
-	default:
-		logger.Error("Invalid LED state", "state", newState)
-		return
+				case REDSLOW:
+					go blink(leds.red, ctxBlink, SLOW)
+					logger.Debug("SetState to REDSLOW")
+
+				case GREENSLOW:
+					go blink(leds.green, ctxBlink, SLOW)
+					logger.Debug("SetState to GREENSLOW")
+
+				case REDFAST:
+					go blink(leds.red, ctxBlink, FAST)
+					logger.Debug("SetState to REDFAST")
+
+				case GREENFAST:
+					go blink(leds.green, ctxBlink, FAST)
+					logger.Debug("SetState to GREENFAST")
+
+				default:
+					logger.Error("Invalid LED state", "state", newState)
+					return
+				}
+			}
+		}
 	}
 }
 
@@ -133,7 +160,7 @@ func blink(led *LEDGPIO, ctx context.Context, rateHz float64) {
 		select {
 		case <-ctx.Done():
 			led.Off()
-			logger.Debug(fmt.Sprintf("Blinking stopped for %s.", led.Name))
+			// logger.Debug(fmt.Sprintf("Blinking stopped for %s.", led.Name))
 			return
 
 		case <-ticker.C:

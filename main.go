@@ -12,7 +12,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.8.12" // Return to basic goroutine for lights and only call from main
+const AppVersion = "0.9.0" // Back to channel commands and goroutine
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -20,11 +20,8 @@ const AppVersion = "0.8.12" // Return to basic goroutine for lights and only cal
 
 var hostName string
 var busConfigured bool = false
-
-// Create activity Light and other layout status lights and button
-var redLight LEDGPIO
-var greenLight LEDGPIO
-var leds LightController
+// Channel for comman ing the light control goroutine to change the LED state
+var lightCmd = make(chan int, 5)
 
 // Global Internet status flag
 var internet bool = false
@@ -37,6 +34,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 	defer stop()
 	var wg sync.WaitGroup
+	ctxLight, stopLight := context.WithCancel(context.Background())
 
 	configureLogging()
 
@@ -54,12 +52,15 @@ func main() {
 	}
 	logger.Debug("GPIO bus is configured")
 
-	var redLight = NewGPIOLED("Red Light", RED)
-	var greenLight = NewGPIOLED("Green Light", GREEN)
-	var leds = initLightController(redLight, greenLight)
-	logger.Debug("LED controller and red/green lights configured.")
+	// var redLight = NewGPIOLED("Red Light", RED)
+	// var greenLight = NewGPIOLED("Green Light", GREEN)
+	// var leds = initLightController(redLight, greenLight)
+	// logger.Debug("LED controller and red/green lights configured.")
 
-	leds.SetState(REDSLOW)
+	go lightControl(ctxLight, lightCmd)
+
+	lightCmd<-REDSLOW
+
 	time.Sleep(time.Duration(2) * time.Second)
 
 	// Retrieve hostname and log it
@@ -140,7 +141,7 @@ func main() {
 
 	go processSensorData(ctx, &wg, logger)    // Background thread to process sensor data
 	go removeExpiredSensors(ctx, &wg, logger) // Background thread to process expired sensors
-	go monitorWiFi(ctx, &wg, logger, leds)    // Background thread to monitor Wi-Fi connection and handle setup if needed
+	go monitorWiFi(ctx, &wg, logger, lightCmd)    // Background thread to monitor Wi-Fi connection and handle setup if needed
 
 	// Handle other signals while waiting for goroutines to halt.
 	stopChannel := make(chan os.Signal, 1)
@@ -159,14 +160,14 @@ func main() {
 		case syscall.SIGTERM:
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
-			leds.Close()
+			stopLight()
 			releasePin(redLight.Pin)
 			releasePin(greenLight.Pin)
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
-			leds.Close()
+			stopLight()
 			releasePin(redLight.Pin)
 			releasePin(greenLight.Pin)
 			wg.Wait()
