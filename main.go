@@ -13,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.10.1" // Goroutine to write LED states to file for HubControl
+const AppVersion = "0.10.2" // Goroutine to write LED states to file for HubControl
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -47,7 +47,7 @@ func main() {
 	go func() {
 		if err := RunLEDStateWriter(ctxLight, lightCmd); err != nil &&
 			!errors.Is(err, context.Canceled) {
-			logger.Info("LED state writer stopped: %v", err)
+			logger.Info("LED state writer stopped: %v\n", err)
 		}
 	}()
 
