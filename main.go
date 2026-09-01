@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -12,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.9.9" // Back to channel commands and goroutine
+const AppVersion = "0.10.0" // Goroutine to write LED states to file for HubControl
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -35,11 +36,22 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 	defer stop()
 	var wg sync.WaitGroup
+	// For sending commands to HubControl
 	ctxLight, stopLight := context.WithCancel(context.Background())
+	defer stopLight()
 
 	configureLogging()
 
 	logger.Info("Starting Sensor Hub main program. Version: " + AppVersion)
+
+	go func() {
+		if err := RunLEDStateWriter(ctxLight, lightCmd); err != nil &&
+			!errors.Is(err, context.Canceled) {
+			logger.Info("LED state writer stopped: %v", err)
+		}
+	}()
+
+	lightCmd <- REDSLOW
 
 	// Initialize the host GPIO driver to support LED and pushbutton.
 	if !busConfigured {
@@ -53,23 +65,6 @@ func main() {
 	}
 	logger.Debug("GPIO bus is configured")
 
-	// var redLight = NewGPIOLED("Red Light", RED)
-	// var greenLight = NewGPIOLED("Green Light", GREEN)
-	// var leds = initLightController(redLight, greenLight)
-	// logger.Debug("LED controller and red/green lights configured.")
-
-	go lightControl(ctxLight, lightCmd)
-	time.Sleep(time.Duration(5) * time.Second)
-
-	lightCmd <- REDON
-	time.Sleep(time.Duration(5) * time.Second)
-
-	// lightCmd <- GREENSLOW
-	// time.Sleep(time.Duration(5) * time.Second)
-
-	// lightCmd <- REDFAST
-	// time.Sleep(time.Duration(5) * time.Second)
-
 	// Retrieve hostname and log it
 	var err error
 	hostName, err = getHostname()
@@ -82,14 +77,15 @@ func main() {
 	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
 	if err := EnsureSensorHubHostname(); err != nil {
-		logger.Error("Failed to set hostname. RED fast.", "err", err)
+		logger.Error("Failed to set hostname.", "err", err)
 		time.Sleep(time.Duration(1) * time.Second)
+		lightCmd <- REDON
 		os.Exit(1)
 	} else {
 		hostName, err = getHostname()
 		if err != nil {
 			logger.Error("Failed to retrieve hostname.", "err", err)
-			// leds.SetState(REDFAST) // Set LED to red fast blink to indicate error
+			lightCmd <- REDON // Set LED to red fast blink to indicate error
 			time.Sleep(time.Duration(1) * time.Second)
 			os.Exit(1)
 		} else {
@@ -103,6 +99,8 @@ func main() {
 	db, err = initDB(dbPath)
 	if err != nil {
 		logger.Error(fmt.Sprintf("DB init failed: %v", err))
+		lightCmd <- REDON
+		os.Exit(1)
 	}
 	defer db.Close()
 
@@ -116,14 +114,17 @@ func main() {
 		if err := startHotspot(); err != nil {
 			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
 			time.Sleep(time.Duration(1) * time.Second)
+			lightCmd <- REDON
 			os.Exit(1)
 		} else {
 			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
+			lightCmd <- GREENSLOW
 		}
 		// Hotspot is running. Waiting for user to configure using iOS app.
 	} else {
 		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
 		wifi = true
+		lightCmd <- GREENON
 	}
 
 	// Start the REST service in a separate goroutine
@@ -166,7 +167,8 @@ func main() {
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
 			stopLight()
-			lightCmd<-OFF
+			lightCmd <- OFF
+			close(lightCmd)
 			releasePin(redLight.Pin)
 			releasePin(greenLight.Pin)
 			wg.Wait()
@@ -174,6 +176,7 @@ func main() {
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
 			stopLight()
+			close(lightCmd)
 			releasePin(redLight.Pin)
 			releasePin(greenLight.Pin)
 			wg.Wait()
