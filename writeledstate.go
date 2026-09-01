@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-const ledStateFile = "/var/sensor/led.state"
+const ledStateFile = "/var/sensorhub/led.state"
 
 var stateNames = map[string]int{
 	"OFF":       OFF,
