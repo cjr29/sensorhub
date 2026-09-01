@@ -95,51 +95,51 @@ func startHotspot() error {
 // collects selected WiFi SSID and password,
 // and then connects to the specified WiFi network.
 // If the connection fails, it will loop back to the hotspot configuration step.
-func runWiFiViaHotspot() {
-	logger.Debug("Entered runWiFiViaHotspot.")
-	if err := startHotspot(); err != nil {
-		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
-		// Generate signal to stop Sensor Hub
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-	}
+// func runWiFiViaHotspot() {
+// 	logger.Debug("Entered runWiFiViaHotspot.")
+// 	if err := startHotspot(); err != nil {
+// 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
+// 		// Generate signal to stop Sensor Hub
+// 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+// 	}
 
-	// Create a channel to catch the WiFi login credentials once submitted
-	// from the restservice
-	// Return from the channel will be a [2]string array with SSID and PWD
-	credChan := make(chan [2]string)
+// 	// Create a channel to catch the WiFi login credentials once submitted
+// 	// from the restservice
+// 	// Return from the channel will be a [2]string array with SSID and PWD
+// 	credChan := make(chan [2]string)
 
-	server := startWebServer(credChan)
+// 	server := startWebServer(credChan)
 
-	// Wait until the user sends credentials via the captive portal web interface
-	logger.Debug("Waiting for user to enter SSID and password")
-	creds := <-credChan
-	currentWiFi.SSID = creds[0]
-	currentWiFi.PWD = creds[1]
+// 	// Wait until the user sends credentials via the captive portal web interface
+// 	logger.Debug("Waiting for user to enter SSID and password")
+// 	creds := <-credChan
+// 	currentWiFi.SSID = creds[0]
+// 	currentWiFi.PWD = creds[1]
 
-	logger.Debug(fmt.Sprintf("Received credentials for SSID: %s. \n Shutting down web server to connect to WiFi.", currentWiFi.SSID))
-	// Persist WiFi credentials
-	currentWiFi.saveSSIDPWD()
+// 	logger.Debug(fmt.Sprintf("Received credentials for SSID: %s. \n Shutting down web server to connect to WiFi.", currentWiFi.SSID))
+// 	// Persist WiFi credentials
+// 	currentWiFi.saveSSIDPWD()
 
-	// Gracefully shut down web server so the HTTP response finishes flushing to the browser
-	_ = server.Shutdown(context.Background())
+// 	// Gracefully shut down web server so the HTTP response finishes flushing to the browser
+// 	_ = server.Shutdown(context.Background())
 
-	logger.Debug("Stopping hotspot.")
-	_ = stopHotspot()
+// 	logger.Debug("Stopping hotspot.")
+// 	_ = stopHotspot()
 
-	// Use credentials just received to recreate a clean wifi-home connection profile
-	// Add the new connection profile before trying to bring it up
-	// Step 1: Delete existing profile if it exisits
-	if connectionExists(WiFiConnName) {
-		deleteConnection(WiFiConnName)
-	}
-	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
-	if err != nil {
-		// Could not connect to WiFi, loop until success
-		loginWiFiViaHotspot()
-	}
-	// WiFi Connected
-	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
-}
+// 	// Use credentials just received to recreate a clean wifi-home connection profile
+// 	// Add the new connection profile before trying to bring it up
+// 	// Step 1: Delete existing profile if it exisits
+// 	if connectionExists(WiFiConnName) {
+// 		deleteConnection(WiFiConnName)
+// 	}
+// 	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
+// 	if err != nil {
+// 		// Could not connect to WiFi, loop until success
+// 		loginWiFiViaHotspot()
+// 	}
+// 	// WiFi Connected
+// 	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
+// }
 
 func loginWiFiViaHotspot() {
 	logger.Debug("Entered loginWiFiViaHotspot.")

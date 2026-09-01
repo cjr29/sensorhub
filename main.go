@@ -13,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.10.2" // Goroutine to write LED states to file for HubControl
+const AppVersion = "0.10.3" // Try 3 times before failing connection
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -108,21 +108,85 @@ func main() {
 	wg.Add(4)
 	defer wg.Done()
 
+	// logger.Info("Check if Sensor Hub WiFi has been configured.")
+	// if !wifiConfigured() {
+	// 	// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
+	// 	if err := startHotspot(); err != nil {
+	// 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
+	// 		time.Sleep(time.Duration(3) * time.Second)
+	// 		lightCmd <- REDON
+	// 		os.Exit(1)
+	// 	} else {
+	// 		logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
+	// 		lightCmd <- GREENSLOW
+	// 	}
+	// 	// Hotspot is running. Waiting for user to configure using iOS app.
+	// } else {
+	// 	logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
+	// 	wifi = true
+	// 	lightCmd <- GREENON
+	// }
+
+	const (
+		maxHotspotAttempts = 3
+		hotspotRetryDelay  = 3 * time.Second
+	)
+
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
+
 	if !wifiConfigured() {
-		// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
-		if err := startHotspot(); err != nil {
-			logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
-			time.Sleep(time.Duration(1) * time.Second)
+		// WiFi is not configured. Try to start the hotspot up to three times.
+		var err error
+
+		for attempt := 1; attempt <= maxHotspotAttempts; attempt++ {
+			logger.Info(fmt.Sprintf(
+				"Starting hotspot (attempt %d/%d)",
+				attempt,
+				maxHotspotAttempts,
+			))
+
+			err = startHotspot()
+			if err == nil {
+				break
+			}
+
+			logger.Error(fmt.Sprintf(
+				"Failed to start hotspot on attempt %d/%d: %v",
+				attempt,
+				maxHotspotAttempts,
+				err,
+			))
+
+			if attempt < maxHotspotAttempts {
+				time.Sleep(hotspotRetryDelay)
+			}
+		}
+
+		if err != nil {
+			logger.Error(fmt.Sprintf(
+				"Failed to start hotspot after %d attempts: %v",
+				maxHotspotAttempts,
+				err,
+			))
+
+			time.Sleep(hotspotRetryDelay)
 			lightCmd <- REDON
 			os.Exit(1)
-		} else {
-			logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
-			lightCmd <- GREENSLOW
 		}
-		// Hotspot is running. Waiting for user to configure using iOS app.
+
+		logger.Info(fmt.Sprintf(
+			"Hotspot started. Waiting for WiFi configuration via REST service on SSID %s",
+			HotspotSSID,
+		))
+		lightCmd <- GREENSLOW
+
+		// Hotspot is running. Waiting for the user to configure WiFi using the iOS app.
 	} else {
-		logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
+		logger.Info(fmt.Sprintf(
+			"WiFi has been preconfigured. Using preset SSID %s",
+			currentWiFi.SSID,
+		))
+
 		wifi = true
 		lightCmd <- GREENON
 	}
@@ -166,8 +230,8 @@ func main() {
 		case syscall.SIGTERM:
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
-			stopLight()
 			lightCmd <- OFF
+			stopLight()
 			close(lightCmd)
 			releasePin(redLight.Pin)
 			releasePin(greenLight.Pin)
@@ -175,6 +239,7 @@ func main() {
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
+			lightCmd <- OFF
 			stopLight()
 			close(lightCmd)
 			releasePin(redLight.Pin)
