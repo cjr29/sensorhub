@@ -13,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.10.3" // Try 3 times before failing connection
+const AppVersion = "0.10.4" // Try 3 times before failing connection to wifi
 
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
@@ -178,7 +178,6 @@ func main() {
 			"Hotspot started. Waiting for WiFi configuration via REST service on SSID %s",
 			HotspotSSID,
 		))
-		lightCmd <- GREENSLOW
 
 		// Hotspot is running. Waiting for the user to configure WiFi using the iOS app.
 	} else {

@@ -210,6 +210,11 @@ func getSSIDs(w http.ResponseWriter, r *http.Request) {
 }
 
 /****************** POST HANDLERS ******************/
+const (
+	maxConnectAttempts = 3
+	connectRetryDelay  = 3 * time.Second
+)
+
 type connectSSIDReq struct {
 	SSID     string `json:"SSID"`
 	Password string `json:"password"`
@@ -218,42 +223,82 @@ type connectSSIDReq struct {
 func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	var req connectSSIDReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusNoContent)
-		writeJSON(w, http.StatusNoContent, map[string]any{"error": "JSON decode error"})
-		return
-	}
-
-	ssid := strings.TrimSpace(req.SSID)
-	pwd := req.Password // allow empty for open networks; enforce if you want
-
-	if ssid == "" {
-		w.WriteHeader(http.StatusNoContent)
-		writeJSON(w, http.StatusNoContent, map[string]any{"error": "SSID is required"})
-		return
-	}
-
-	if err := connectToSSID(ssid, pwd); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"error": "Failed to connect",
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": "JSON decode error",
 		})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"message": "Connect command sent",
-		"SSID":    ssid,
-	})
+	ssid := strings.TrimSpace(req.SSID)
+	pwd := req.Password // Empty passwords are allowed for open networks.
 
-	// Persist WiFi credentials
+	if ssid == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": "SSID is required",
+		})
+		return
+	}
+
+	var connectErr error
+
+	for attempt := 1; attempt <= maxConnectAttempts; attempt++ {
+		logger.Info(fmt.Sprintf(
+			"Connecting to WiFi SSID %q, attempt %d/%d",
+			ssid,
+			attempt,
+			maxConnectAttempts,
+		))
+
+		connectErr = connectToSSID(ssid, pwd)
+		if connectErr == nil {
+			break
+		}
+
+		logger.Error(fmt.Sprintf(
+			"Failed to connect to WiFi SSID %q on attempt %d/%d: %v",
+			ssid,
+			attempt,
+			maxConnectAttempts,
+			connectErr,
+		))
+
+		if attempt < maxConnectAttempts {
+			select {
+			case <-time.After(connectRetryDelay):
+			case <-r.Context().Done():
+				writeJSON(w, http.StatusRequestTimeout, map[string]any{
+					"error": "Connection attempt canceled",
+				})
+				return
+			}
+		}
+	}
+
+	if connectErr != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": "Failed to connect after three attempts",
+		})
+		return
+	}
+
+	// Persist WiFi credentials only after a successful connection.
 	currentWiFi.SSID = ssid
-	// Password is saved in the wifi-home wlan0 connection, but we do not log it for security reasons.
-	currentWiFi.PWD = "password" // Do not log the actual password for security reasons
+	// Do not log or expose the actual password.
+	currentWiFi.PWD = "password"
 	currentWiFi.saveSSIDPWD()
 
-	// Restart avahi-daemon to update mDNS hostname
+	// Restart avahi-daemon to update the mDNS hostname.
 	if err := restartAvahiDaemon(); err != nil {
-		logger.Error(fmt.Sprintf("Failed to restart avahi-daemon: %v", err))
+		logger.Error(fmt.Sprintf(
+			"Failed to restart avahi-daemon: %v",
+			err,
+		))
 	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message": "Connected successfully",
+		"SSID":    ssid,
+	})
 }
 
 /****************** PATCH HANDLERS ******************/
