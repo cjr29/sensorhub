@@ -44,7 +44,7 @@ type Sensor struct {
 	Active      int     `json:"ACTIVE"`
 }
 
-func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger) {
+func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, lightCmd chan int) {
 	defer wg.Done()
 	esc := url.PathEscape(dbPath)
 	dsn := fmt.Sprintf("file:%s?mode=rw", esc)
@@ -294,6 +294,8 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 			err,
 		))
 	}
+
+	lightCmd <- GREENON
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"message": "Connected successfully",

@@ -13,8 +13,16 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.10.4" // Try 3 times before failing connection to wifi
-
+const AppVersion = "0.10.5"
+const (
+	OFF int = iota
+	REDON
+	GREENON
+	REDSLOW
+	GREENSLOW
+	REDFAST
+	GREENFAST
+)
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
 // The hostname is set to "sensorhub" + 12 hex digits of MAC address of wlan0 without the colons.
@@ -51,7 +59,8 @@ func main() {
 		}
 	}()
 
-	lightCmd <- REDSLOW
+	time.Sleep(time.Duration(1) * time.Second)  // Brief pause before first write
+	lightCmd <- REDSLOW // Initial activity light state while booting
 
 	// Initialize the host GPIO driver to support LED and pushbutton.
 	if !busConfigured {
@@ -108,25 +117,6 @@ func main() {
 	wg.Add(4)
 	defer wg.Done()
 
-	// logger.Info("Check if Sensor Hub WiFi has been configured.")
-	// if !wifiConfigured() {
-	// 	// WiFi not configured. Start Hotspot and wait for restservice to handle configuration.
-	// 	if err := startHotspot(); err != nil {
-	// 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
-	// 		time.Sleep(time.Duration(3) * time.Second)
-	// 		lightCmd <- REDON
-	// 		os.Exit(1)
-	// 	} else {
-	// 		logger.Info(fmt.Sprintf("Hotspot started. Waiting for WiFi configuration via REST service on SSID %s", HotspotSSID))
-	// 		lightCmd <- GREENSLOW
-	// 	}
-	// 	// Hotspot is running. Waiting for user to configure using iOS app.
-	// } else {
-	// 	logger.Info(fmt.Sprintf("WiFi has been preconfigured. Using preset SSID %s", currentWiFi.SSID))
-	// 	wifi = true
-	// 	lightCmd <- GREENON
-	// }
-
 	const (
 		maxHotspotAttempts = 3
 		hotspotRetryDelay  = 3 * time.Second
@@ -180,6 +170,7 @@ func main() {
 		))
 
 		// Hotspot is running. Waiting for the user to configure WiFi using the iOS app.
+		lightCmd <- GREENSLOW
 	} else {
 		logger.Info(fmt.Sprintf(
 			"WiFi has been preconfigured. Using preset SSID %s",
@@ -187,19 +178,21 @@ func main() {
 		))
 
 		wifi = true
-		lightCmd <- GREENON
+		lightCmd <- GREENSLOW
 	}
 
 	// Start the REST service in a separate goroutine
 	// Starts now in order to handle Hotspot configuration if needed.
 	// If WiFi is already configured, the REST service will still be available for other requests.
-	go restService(ctx, &wg, logger)
+	go restService(ctx, &wg, logger, lightCmd)
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
 		internet = true
+		lightCmd <- GREENON
 	} else {
 		internet = false
+		lightCmd <- GREENSLOW
 	}
 
 	/************************************************************************************/
@@ -230,19 +223,15 @@ func main() {
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
 			lightCmd <- OFF
-			stopLight()
-			close(lightCmd)
-			releasePin(redLight.Pin)
-			releasePin(greenLight.Pin)
+			stopLight() // Tell HubControl to stop
+			close(lightCmd) // Close channel to HubControl
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
 			lightCmd <- OFF
-			stopLight()
-			close(lightCmd)
-			releasePin(redLight.Pin)
-			releasePin(greenLight.Pin)
+			stopLight() // Tell HubControl to stop
+			close(lightCmd) // Close channel to HubControl
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGHUP:
