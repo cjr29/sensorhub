@@ -13,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.10.5"
+const AppVersion = "0.10.6"
 const (
 	OFF int = iota
 	REDON
@@ -178,7 +178,7 @@ func main() {
 		))
 
 		wifi = true
-		lightCmd <- GREENSLOW
+		lightCmd <- GREENON
 	}
 
 	// Start the REST service in a separate goroutine
