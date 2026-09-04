@@ -21,6 +21,28 @@
 				"panel": "new"
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "Build for Raspberry Pi Zero W (32-bit ARMv6)",
+			"type": "shell",
+			"command": "go build -o sensorhubARMv6",
+			"options": {
+				"env": {
+					"GOOS": "linux",
+					"GOARCH": "arm",
+					"GOARM": "6",
+					"CGO_ENABLED": "0"
+				}
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "new"
+			},
+			"problemMatcher": []
 		}
 	]
 }
