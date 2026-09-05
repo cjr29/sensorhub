@@ -28,8 +28,7 @@ func validHostname(h string) error {
 	if h == "" {
 		return errors.New("hostname is empty")
 	}
-	// Simple RFC-ish sanity: allow single label (hostnamectl usually accepts full hostnames too)
-	// If you want multi-label FQDN validation, tell me and I’ll adapt.
+
 	if strings.Contains(h, ".") {
 		// validate each label
 		for _, part := range strings.Split(h, ".") {
@@ -51,8 +50,6 @@ func setHostname(hostname string) error {
 		return err
 	}
 
-	// Needs root (run the program as root or with sudo).
-	// --static and --transient cover the common cases.
 	cmd := exec.Command("sudo",
 		"hostnamectl",
 		"set-hostname",
@@ -76,7 +73,9 @@ func setHostname(hostname string) error {
 }
 
 // EnsureSensorHubHostname checks hostname format and renames the Pi to
-// "sensorhubxxxxxx" where xxxxxxxxxxxxxx is the MAC address of wlan0. It returns an error if the hostname is invalid or if it fails to set the hostname. It requires root privileges to change the hostname and restart avahi-daemon.
+// "sensorhubxxxxxx" where xxxxxxxxxxxxxx is the MAC address of wlan0. 
+// It returns an error if the hostname is invalid or if it fails to set the hostname. 
+// It requires root privileges to change the hostname and restart avahi-daemon.
 // of the MAC address of wlan0.
 
 func EnsureSensorHubHostname() error {
@@ -88,7 +87,7 @@ func EnsureSensorHubHostname() error {
 	macSuffix, err := lastTwelveHexDigitsOfMACInterface("wlan0")
 
 	want := "sensorhub" + macSuffix // e.g. sensorhub00:11:22:33:44:55
-	// hostnamectl typically requires root.
+
 	cmd := exec.Command("sudo",
 		"hostnamectl",
 		"set-hostname",

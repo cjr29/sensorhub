@@ -36,11 +36,6 @@ func processSensorData(ctx context.Context, wg *sync.WaitGroup, logger *slog.Log
 	}
 	defer db.Close()
 
-	// macAddress, err = MACForInterface("wlan0")
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Failed to get MAC address, set to fallback MAC address: %v", err))
-	// 	macAddress = "000000000000" // Fallback MAC address
-	// }
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", "localhost", 1883))
 	opts.SetClientID("ProcessSensorData")

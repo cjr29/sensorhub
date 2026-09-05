@@ -167,7 +167,6 @@ func handleGetStation(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSSIDs(w http.ResponseWriter, r *http.Request) {
-	// Requires NetworkManager's nmcli.
 	// It lists Wi-Fi networks visible right now.
 	cmd := exec.CommandContext(r.Context(),
 		"nmcli", "-t", "-f", "SSID", "dev", "wifi", "list",
@@ -199,7 +198,6 @@ func getSSIDs(w http.ResponseWriter, r *http.Request) {
 		ssids = append(ssids, ssid)
 	}
 
-	// Optional: keep consistent behavior with other handlers
 	if len(ssids) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		writeJSON(w, http.StatusNoContent, map[string]any{"error": "No SSIDs found"})

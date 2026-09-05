@@ -89,58 +89,6 @@ func startHotspot() error {
 	return nil
 }
 
-
-// loginWiFiViaHotspot starts a temporary hotspot,
-// launches the restservice to monitor for configuration request,
-// collects selected WiFi SSID and password,
-// and then connects to the specified WiFi network.
-// If the connection fails, it will loop back to the hotspot configuration step.
-// func runWiFiViaHotspot() {
-// 	logger.Debug("Entered runWiFiViaHotspot.")
-// 	if err := startHotspot(); err != nil {
-// 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
-// 		// Generate signal to stop Sensor Hub
-// 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-// 	}
-
-// 	// Create a channel to catch the WiFi login credentials once submitted
-// 	// from the restservice
-// 	// Return from the channel will be a [2]string array with SSID and PWD
-// 	credChan := make(chan [2]string)
-
-// 	server := startWebServer(credChan)
-
-// 	// Wait until the user sends credentials via the captive portal web interface
-// 	logger.Debug("Waiting for user to enter SSID and password")
-// 	creds := <-credChan
-// 	currentWiFi.SSID = creds[0]
-// 	currentWiFi.PWD = creds[1]
-
-// 	logger.Debug(fmt.Sprintf("Received credentials for SSID: %s. \n Shutting down web server to connect to WiFi.", currentWiFi.SSID))
-// 	// Persist WiFi credentials
-// 	currentWiFi.saveSSIDPWD()
-
-// 	// Gracefully shut down web server so the HTTP response finishes flushing to the browser
-// 	_ = server.Shutdown(context.Background())
-
-// 	logger.Debug("Stopping hotspot.")
-// 	_ = stopHotspot()
-
-// 	// Use credentials just received to recreate a clean wifi-home connection profile
-// 	// Add the new connection profile before trying to bring it up
-// 	// Step 1: Delete existing profile if it exisits
-// 	if connectionExists(WiFiConnName) {
-// 		deleteConnection(WiFiConnName)
-// 	}
-// 	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
-// 	if err != nil {
-// 		// Could not connect to WiFi, loop until success
-// 		loginWiFiViaHotspot()
-// 	}
-// 	// WiFi Connected
-// 	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
-// }
-
 func loginWiFiViaHotspot() {
 	logger.Debug("Entered loginWiFiViaHotspot.")
 	if err := startHotspot(); err != nil {
@@ -171,7 +119,7 @@ func loginWiFiViaHotspot() {
 
 	// Use credentials just received to recreate a clean wifi-home connection profile
 	// Add the new connection profile before trying to bring it up
-	// Step 1: Delete existing profile if it exisits
+	// Delete existing profile if it exisits
 	if connectionExists(WiFiConnName) {
 		deleteConnection(WiFiConnName)
 	}
@@ -281,10 +229,10 @@ func connectToSSID(ssid string, pwd string) error {
 
 	// Use credentials to recreate a clean wifi-home connection profile
 	// Add the new connection profile before trying to bring it up
-	// Step 1: Delete existing profile if it exisits
+	// Delete existing profile if it exisits
 	if connectionExists(WiFiConnName) {
 		deleteConnection(WiFiConnName)
-	} // Step 2: Add new connection profile
+	} // Add new connection profile
 	err := addWifiConnection(WiFiConnName, ssid, pwd)
 	if err != nil {
 		// Could not connect to WiFi
@@ -446,9 +394,10 @@ func parseNmcliScan(raw string) []Network {
 }
 
 func (w *WiFi) saveSSIDPWD() error {
-	// Write the SSID and PWD from struct w to the config file for persistence
-	// Overwrites any existing content, which is fine since we only need to store the current SSID:PWD
-	// Creates the file if it doesn't exist, or truncates it if it does. Permissions are set to 0644 (read/write for owner, read for group and others).
+	// Write the SSID from struct w to the config file for persistence
+	// Overwrites any existing content, which is fine since we only need to store the current SSID
+	// Creates the file if it doesn't exist, or truncates it if it does. 
+	// Permissions are set to 0644 (read/write for owner, read for group and others).
 	_, err := os.Stat(pathToHubConfig)
 	if os.IsNotExist(err) {
 		f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
@@ -487,7 +436,7 @@ func (w *WiFi) getSSIDPWD() (bool, error) {
 		logger.Error("Unable to convert JSON to WiFi struct")
 		return false, err
 	}
-	// Successful. SSID and PWD are in the WiFi struct w
+	// Successful. SSID in the WiFi struct w, don't save pwd
 	return true, nil
 }
 
@@ -503,43 +452,6 @@ func hasInternet() bool {
 		internet = true
 		return true
 	}
-}
-
-/******************************************************/
-/* Unused functions - For future enhancements *********/
-/******************************************************/
-
-func profileExists(ctx context.Context, connName string) (bool, error) {
-	// Use nmcli in terse, script-friendly mode.
-	// -f NAME shows only connection names
-	// -t (terse) removes headers/formatting.
-	// nmcli will exit 0 even if no connections exist; we just check output.
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(cctx, "nmcli",
-		"-t", "-f", "NAME", "connection", "show")
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		// If nmcli isn't installed or NetworkManager isn't available, surface error.
-		msg := strings.TrimSpace(stderr.String())
-		if msg != "" {
-			return false, fmt.Errorf("nmcli failed: %w (%s)", err, msg)
-		}
-		return false, fmt.Errorf("nmcli failed: %w", err)
-	}
-
-	target := strings.TrimSpace(connName)
-	for _, line := range strings.Split(out.String(), "\n") {
-		if strings.TrimSpace(line) == target {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // ConnectionActive checks whether a given NetworkManager connection exists and is active.
