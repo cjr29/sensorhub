@@ -193,6 +193,22 @@ func addHotspotConnection(name string, ssid string, pwd string) error {
 	if err != nil {
 		return fmt.Errorf("%v: %s", err, string(output))
 	}
+
+	// Configure connection for WPA-PSK security
+	cmd = exec.Command("sudo", "nmcli",
+		"con", "modify", name,
+		"802-11-wireless.mode", "ap",
+		"802-11-wireless.band", "bg",
+		"ipv4.method", "shared",
+		"ipv6.method", "ignore",
+		"wifi-sec.key-mgmt", "wpa-psk",
+		"wifi-sec.psk", pwd,
+	)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, string(output))
+	}
+
 	return nil
 }
 
@@ -396,7 +412,7 @@ func parseNmcliScan(raw string) []Network {
 func (w *WiFi) saveSSIDPWD() error {
 	// Write the SSID from struct w to the config file for persistence
 	// Overwrites any existing content, which is fine since we only need to store the current SSID
-	// Creates the file if it doesn't exist, or truncates it if it does. 
+	// Creates the file if it doesn't exist, or truncates it if it does.
 	// Permissions are set to 0644 (read/write for owner, read for group and others).
 	_, err := os.Stat(pathToHubConfig)
 	if os.IsNotExist(err) {
