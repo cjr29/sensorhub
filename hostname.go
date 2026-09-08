@@ -104,7 +104,7 @@ func EnsureSensorHubHostname() error {
 		return fmt.Errorf("hostnamectl failed: %w (stderr: %s)", err, strings.TrimSpace(stderr.String()))
 	}
 
-	time.Sleep(time.Duration(1) * time.Second) // Wait a second for the hostname to be set before restarting avahi-daemon.
+	time.Sleep(time.Duration(3) * time.Second) // Wait a second for the hostname to be set before restarting avahi-daemon.
 
 	// Restart avahi-daemon to update the hostname immediately on the local network.
 	cmd = exec.Command("sudo", "systemctl", "restart", "avahi-daemon")
