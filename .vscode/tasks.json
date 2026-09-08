@@ -12,10 +12,6 @@
 					"CGO_ENABLED": "0"
 				}
 			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
 			"presentation": {
 				"reveal": "always",
 				"panel": "new"
@@ -34,13 +30,22 @@
 					"CGO_ENABLED": "0"
 				}
 			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
 			"presentation": {
 				"reveal": "always",
 				"panel": "new"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Build Raspberry Pi targets",
+			"dependsOn": [
+				"Build for Raspberry Pi (arm64)",
+				"Build for Raspberry Pi Zero W (32-bit ARMv6)"
+			],
+			"dependsOrder": "sequence",
+			"group": {
+				"kind": "build",
+				"isDefault": true
 			},
 			"problemMatcher": []
 		}

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var hostLabelRE = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$`)
@@ -62,6 +63,8 @@ func setHostname(hostname string) error {
 		return fmt.Errorf("hostnamectl failed: %w; output: %s", err, strings.TrimSpace(string(out)))
 	}
 
+	time.Sleep(time.Duration(1) * time.Second) // Wait a second for the hostname to be set before restarting avahi-daemon.
+
 	// Restart avahi-daemon to update the hostname immediately on the local network.
 	cmd = exec.Command("sudo", "systemctl", "restart", "avahi-daemon")
 	out, err = cmd.CombinedOutput()
@@ -73,8 +76,8 @@ func setHostname(hostname string) error {
 }
 
 // EnsureSensorHubHostname checks hostname format and renames the Pi to
-// "sensorhubxxxxxx" where xxxxxxxxxxxxxx is the MAC address of wlan0. 
-// It returns an error if the hostname is invalid or if it fails to set the hostname. 
+// "sensorhubxxxxxx" where xxxxxxxxxxxxxx is the MAC address of wlan0.
+// It returns an error if the hostname is invalid or if it fails to set the hostname.
 // It requires root privileges to change the hostname and restart avahi-daemon.
 // of the MAC address of wlan0.
 
@@ -100,6 +103,8 @@ func EnsureSensorHubHostname() error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("hostnamectl failed: %w (stderr: %s)", err, strings.TrimSpace(stderr.String()))
 	}
+
+	time.Sleep(time.Duration(1) * time.Second) // Wait a second for the hostname to be set before restarting avahi-daemon.
 
 	// Restart avahi-daemon to update the hostname immediately on the local network.
 	cmd = exec.Command("sudo", "systemctl", "restart", "avahi-daemon")

@@ -13,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.10.11"
+const AppVersion = "0.10.13"
 const (
 	OFF int = iota
 	REDON
@@ -23,6 +23,7 @@ const (
 	REDFAST
 	GREENFAST
 )
+
 // Uses mDNS address to identify the sensor hub.
 // This allows multiple sensor hubs to be used on the same network without conflict.
 // The hostname is set to "sensorhub" + 12 hex digits of MAC address of wlan0 without the colons.
@@ -59,8 +60,8 @@ func main() {
 		}
 	}()
 
-	time.Sleep(time.Duration(1) * time.Second)  // Brief pause before first write
-	lightCmd <- REDSLOW // Initial activity light state while booting
+	time.Sleep(time.Duration(1) * time.Second) // Brief pause before first write
+	lightCmd <- REDSLOW                        // Initial activity light state while booting
 
 	// Initialize the host GPIO driver to support LED and pushbutton.
 	if !busConfigured {
@@ -74,14 +75,14 @@ func main() {
 	}
 	logger.Debug("GPIO bus is configured")
 
-	// Retrieve hostname and log it
-	var err error
-	hostName, err = getHostname()
-	if err != nil {
-		logger.Error("Failed to retrieve hostname", "err", err)
-	} else {
-		logger.Info(fmt.Sprintf("Sensor Hub Hostname: %s", hostName))
-	}
+	// // Retrieve hostname and log it
+	// var err error
+	// hostName, err = getHostname()
+	// if err != nil {
+	// 	logger.Error("Failed to retrieve hostname", "err", err)
+	// } else {
+	// 	logger.Info(fmt.Sprintf("Sensor Hub Hostname: %s", hostName))
+	// }
 
 	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
 	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
@@ -91,21 +92,21 @@ func main() {
 		lightCmd <- REDON
 		os.Exit(1)
 	} else {
-		hostName, err = getHostname()
-		if err != nil {
-			logger.Error("Failed to retrieve hostname.", "err", err)
-			lightCmd <- REDON // Set LED to red fast blink to indicate error
-			time.Sleep(time.Duration(1) * time.Second)
-			os.Exit(1)
-		} else {
-			logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
-		}
+		// hostName, err = getHostname()
+		// if err != nil {
+		// 	logger.Error("Failed to retrieve hostname.", "err", err)
+		// 	lightCmd <- REDON // Set LED to red fast blink to indicate error
+		// 	time.Sleep(time.Duration(1) * time.Second)
+		// 	os.Exit(1)
+		// } else {
+		logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
+		// }
 	}
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
 	logger.Info("Verify that weather.db exists and is writable. If not, create it.")
-	db, err = initDB(dbPath)
+	db, err := initDB(dbPath)
 	if err != nil {
 		logger.Error(fmt.Sprintf("DB init failed: %v", err))
 		lightCmd <- REDON
@@ -223,14 +224,14 @@ func main() {
 			// SIGTERM is handled by the context cancellation above, so just log and continue.
 			logger.Debug("SIGTERM received by main thread; waiting for goroutines to exit.")
 			lightCmd <- OFF
-			stopLight() // Tell HubControl to stop
+			stopLight()     // Tell HubControl to stop
 			close(lightCmd) // Close channel to HubControl
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
 			lightCmd <- OFF
-			stopLight() // Tell HubControl to stop
+			stopLight()     // Tell HubControl to stop
 			close(lightCmd) // Close channel to HubControl
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
