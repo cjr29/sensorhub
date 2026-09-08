@@ -13,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.10.13"
+const AppVersion = "0.10.14"
 const (
 	OFF int = iota
 	REDON
@@ -92,15 +92,15 @@ func main() {
 		lightCmd <- REDON
 		os.Exit(1)
 	} else {
-		// hostName, err = getHostname()
-		// if err != nil {
-		// 	logger.Error("Failed to retrieve hostname.", "err", err)
-		// 	lightCmd <- REDON // Set LED to red fast blink to indicate error
-		// 	time.Sleep(time.Duration(1) * time.Second)
-		// 	os.Exit(1)
-		// } else {
+		hostName, err = getHostname()
+		if err != nil {
+			logger.Error("Failed to retrieve hostname.", "err", err)
+			lightCmd <- REDON // Set LED to red fast blink to indicate error
+			time.Sleep(time.Duration(1) * time.Second)
+			os.Exit(1)
+		} else {
 		logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
-		// }
+		}
 	}
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
