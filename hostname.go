@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -91,7 +92,8 @@ func EnsureSensorHubHostname() error {
 	}
 	logger.Debug("EnsureSensorHubHostname: Current hostname: " + cur)
 	cur = strings.ToLower(strings.TrimSpace(cur))
-	macSuffix, err := lastTwelveHexDigitsOfMACInterface("wlan0")
+	// macSuffix, err := lastTwelveHexDigitsOfMACInterface("wlan0")
+	macSuffix, err := WiFiMACAddress()
 	logger.Debug("EnsureSensorHubHostname: MAC suffix: " + macSuffix)
 
 	want := "sensorhub" + macSuffix // e.g. sensorhub00:11:22:33:44:55
@@ -184,4 +186,31 @@ func macWithColonsOfMACInterface(ifName string) (string, error) {
 
 	// net.HardwareAddr.String() returns colon-separated hex, e.g. "00:11:22:33:44:55".
 	return mac.String(), nil
+}
+
+func WiFiMACAddress() (string, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+
+	for _, iface := range interfaces {
+		wirelessPath := filepath.Join(
+			"/sys/class/net",
+			iface.Name,
+			"wireless",
+		)
+
+		if _, err := os.Stat(wirelessPath); err == nil {
+			if len(iface.HardwareAddr) > 0 {
+				mac := iface.HardwareAddr
+				// Entire MAC, rendered as 12 lowercase hex chars (colons removed).
+				return fmt.Sprintf("%02x%02x%02x%02x%02x%02x",
+					mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]), nil
+				// return iface.HardwareAddr.String(), nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no Wi-Fi interface found")
 }
