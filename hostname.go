@@ -86,8 +86,10 @@ func EnsureSensorHubHostname() error {
 	if err != nil {
 		return fmt.Errorf("read hostname: %w", err)
 	}
+	logger.Debug("EnsureSensorHubHostname: Current hostname: " + cur)
 	cur = strings.ToLower(strings.TrimSpace(cur))
 	macSuffix, err := lastTwelveHexDigitsOfMACInterface("wlan0")
+	logger.Debug("EnsureSensorHubHostname: MAC suffix: " + macSuffix)
 
 	want := "sensorhub" + macSuffix // e.g. sensorhub00:11:22:33:44:55
 
@@ -131,6 +133,7 @@ func lastTwelveHexDigitsOfMACInterface(ifName string) (string, error) {
 		}
 	}
 	if len(mac) == 0 {
+		logger.Debug(fmt.Sprintf("No MAC address found for interface %q", ifName))
 		return "", fmt.Errorf("no MAC address found for interface %q", ifName)
 	}
 	if len(mac) < 6 {
