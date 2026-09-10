@@ -154,26 +154,6 @@ func main() {
 		lightCmd <- GREENON
 	}
 
-		// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
-	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
-	if err := EnsureSensorHubHostname(); err != nil {
-		logger.Error("Failed to set hostname.", "err", err)
-		time.Sleep(time.Duration(1) * time.Second)
-		lightCmd <- REDON
-		os.Exit(1)
-	} else {
-		hostName, err = getHostname()
-		if err != nil {
-			logger.Error("Failed to retrieve hostname.", "err", err)
-			lightCmd <- REDON // Set LED to red fast blink to indicate error
-			time.Sleep(time.Duration(1) * time.Second)
-			os.Exit(1)
-		} else {
-		logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
-		}
-	}
-
-
 	// Start the REST service in a separate goroutine
 	// Starts now in order to handle Hotspot configuration if needed.
 	// If WiFi is already configured, the REST service will still be available for other requests.
@@ -182,6 +162,24 @@ func main() {
 	// See if Internet (remote) access is available
 	if hasInternet() {
 		internet = true
+		// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
+		// This is done to avoid conflicts when multiple sensor hubs are on the same network.
+		if err := EnsureSensorHubHostname(); err != nil {
+			logger.Error("Failed to set hostname.", "err", err)
+			time.Sleep(time.Duration(1) * time.Second)
+			lightCmd <- REDON
+			os.Exit(1)
+		} else {
+			hostName, err = getHostname()
+			if err != nil {
+				logger.Error("Failed to retrieve hostname.", "err", err)
+				lightCmd <- REDON // Set LED to red fast blink to indicate error
+				time.Sleep(time.Duration(1) * time.Second)
+				os.Exit(1)
+			} else {
+				logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
+			}
+		}
 		lightCmd <- GREENON
 	} else {
 		internet = false
