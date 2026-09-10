@@ -13,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.10.16"
+const AppVersion = "0.10.17"
 const (
 	OFF int = iota
 	REDON
@@ -74,34 +74,6 @@ func main() {
 		busConfigured = true
 	}
 	logger.Debug("GPIO bus is configured")
-
-	// // Retrieve hostname and log it
-	// var err error
-	// hostName, err = getHostname()
-	// if err != nil {
-	// 	logger.Error("Failed to retrieve hostname", "err", err)
-	// } else {
-	// 	logger.Info(fmt.Sprintf("Sensor Hub Hostname: %s", hostName))
-	// }
-
-	// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
-	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
-	if err := EnsureSensorHubHostname(); err != nil {
-		logger.Error("Failed to set hostname.", "err", err)
-		time.Sleep(time.Duration(1) * time.Second)
-		lightCmd <- REDON
-		os.Exit(1)
-	} else {
-		hostName, err = getHostname()
-		if err != nil {
-			logger.Error("Failed to retrieve hostname.", "err", err)
-			lightCmd <- REDON // Set LED to red fast blink to indicate error
-			time.Sleep(time.Duration(1) * time.Second)
-			os.Exit(1)
-		} else {
-		logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
-		}
-	}
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
@@ -181,6 +153,26 @@ func main() {
 		wifi = true
 		lightCmd <- GREENON
 	}
+
+		// Set hostname to sensorhub + 12 hex digits of MAC address of wlan0 without the colons
+	// This is done to avoid conflicts when multiple sensor hubs are on the same network.
+	if err := EnsureSensorHubHostname(); err != nil {
+		logger.Error("Failed to set hostname.", "err", err)
+		time.Sleep(time.Duration(1) * time.Second)
+		lightCmd <- REDON
+		os.Exit(1)
+	} else {
+		hostName, err = getHostname()
+		if err != nil {
+			logger.Error("Failed to retrieve hostname.", "err", err)
+			lightCmd <- REDON // Set LED to red fast blink to indicate error
+			time.Sleep(time.Duration(1) * time.Second)
+			os.Exit(1)
+		} else {
+		logger.Info(fmt.Sprintf("Sensor Hub Hostname set to: %s", hostName))
+		}
+	}
+
 
 	// Start the REST service in a separate goroutine
 	// Starts now in order to handle Hotspot configuration if needed.
