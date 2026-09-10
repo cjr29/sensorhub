@@ -125,6 +125,17 @@ func lastTwelveHexDigitsOfMACInterface(ifName string) (string, error) {
 		return "", fmt.Errorf("list interfaces: %w", err)
 	}
 
+	for _, ifc := range ifaces {
+		logger.Debug(fmt.Sprintf(
+			"name=%q flags=%v index=%d hardware=%q len=%d",
+			ifc.Name,
+			ifc.Flags,
+			ifc.Index,
+			ifc.HardwareAddr,
+			len(ifc.HardwareAddr),
+		))
+	}
+
 	var mac net.HardwareAddr
 	for _, ifc := range ifaces {
 		if ifc.Name == ifName {
