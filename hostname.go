@@ -82,6 +82,9 @@ func setHostname(hostname string) error {
 // of the MAC address of wlan0.
 
 func EnsureSensorHubHostname() error {
+	lightCmd <- REDSLOW // Set LED to red slow blink to indicate hostname check in progress
+	time.Sleep(time.Duration(3) * time.Second)
+
 	cur, err := os.Hostname()
 	if err != nil {
 		return fmt.Errorf("read hostname: %w", err)
