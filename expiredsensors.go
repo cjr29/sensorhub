@@ -166,7 +166,7 @@ func runProcess() {
 		return
 	}
 
-	logger.Info("Expired Sensors Processing: Deleted %d expired sensor records.", deleted)
+	logger.Info("Expired Sensors Processing: Deleted %v expired sensor records.", deleted)
 
 	// // Process unknown sensor records older than 1 week.
 	// searchEnd := time.Now().Add(-7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
