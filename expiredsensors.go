@@ -98,9 +98,56 @@ func deleteSensor(dbPath, tableName string, id any) error {
 	return err
 }
 
+// deleteExpiredSensors deletes records that meet any of these criteria:
+//
+//  1. TIME is older than 24 hours
+//  2. SENSORNAME is "UNKNOWN" and TIME is older than 1 hour
+//  3. ACTIVE is 0 and TIME is older than 1 hour
+//
+// TIME must be stored in a SQLite-compatible ISO-8601 format, for example:
+//
+//	2026-09-11 12:30:00
+//	2026-09-11T12:30:00Z
+func deleteExpiredSensors(ctx context.Context, db *sql.DB) (int64, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	defer func() {
+		// Rollback is harmless if the transaction has already been committed.
+		_ = tx.Rollback()
+	}()
+
+	const query = `
+		DELETE FROM SENSORS
+		WHERE
+			datetime(TIME) < datetime('now', '-24 hours')
+			OR (
+				SENSORNAME = 'UNKNOWN'
+				AND datetime(TIME) < datetime('now', '-1 hour')
+			)
+			OR (
+				ACTIVE = 0
+				AND datetime(TIME) < datetime('now', '-1 hour')
+			);
+	`
+
+	result, err := tx.ExecContext(ctx, query)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
+
 func runProcess() {
 
-	tableName := "SENSORS"
+	// tableName := "SENSORS"
 
 	// Handle missing db case.
 	db, err := sql.Open("sqlite", dbPath)
@@ -108,36 +155,46 @@ func runProcess() {
 		logger.Error("Expired Sensors Processing: No sensor database available. Terminate thread.")
 		return
 	}
-
 	defer db.Close()
 
-	// Process unknown sensor records older than 1 week.
-	searchEnd := time.Now().Add(-7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	sensorsJSON, err := createJSONFromSQLite(dbPath, tableName, searchEnd)
+	deleted, err := deleteExpiredSensors(ctx, db)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Database/JSON error: %v\n", err))
+		logger.Error("Expired Sensors Processing: Could not delete expired sensor records.")
 		return
 	}
 
-	var sensors []sensorRow
-	if err := json.Unmarshal([]byte(sensorsJSON), &sensors); err != nil {
-		logger.Error(fmt.Sprintf("JSON error: %v\n", err))
-		return
-	}
+	logger.Info("Expired Sensors Processing: Deleted %d expired sensor records.", deleted)
 
-	for _, sensor := range sensors {
-		targetSensor := sensor["ID"]
-		targetModel := sensor["MODEL"]
-		targetSensorID := sensor["SENSORID"]
+	// // Process unknown sensor records older than 1 week.
+	// searchEnd := time.Now().Add(-7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
 
-		if err := deleteSensor(dbPath, tableName, targetSensor); err != nil {
-			logger.Error(fmt.Sprintf("Database error deleting sensor ID %v: %v\n", targetSensor, err))
-			continue
-		}
+	// sensorsJSON, err := createJSONFromSQLite(dbPath, tableName, searchEnd)
+	// if err != nil {
+	// 	logger.Error(fmt.Sprintf("Database/JSON error: %v\n", err))
+	// 	return
+	// }
 
-		logger.Debug(fmt.Sprintf("Removed sensor ID %v - Model %v - id:%v\n", targetSensor, targetModel, targetSensorID))
-	}
+	// var sensors []sensorRow
+	// if err := json.Unmarshal([]byte(sensorsJSON), &sensors); err != nil {
+	// 	logger.Error(fmt.Sprintf("JSON error: %v\n", err))
+	// 	return
+	// }
+
+	// for _, sensor := range sensors {
+	// 	targetSensor := sensor["ID"]
+	// 	targetModel := sensor["MODEL"]
+	// 	targetSensorID := sensor["SENSORID"]
+
+	// 	if err := deleteSensor(dbPath, tableName, targetSensor); err != nil {
+	// 		logger.Error(fmt.Sprintf("Database error deleting sensor ID %v: %v\n", targetSensor, err))
+	// 		continue
+	// 	}
+
+	// 	logger.Debug(fmt.Sprintf("Removed sensor ID %v - Model %v - id:%v\n", targetSensor, targetModel, targetSensorID))
+	// }
 
 	logger.Info("Expired Sensors Processing: End cleanup of sensor records.")
 }
