@@ -6,12 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -89,51 +86,51 @@ func startHotspot() error {
 	return nil
 }
 
-func loginWiFiViaHotspot() {
-	logger.Debug("Entered loginWiFiViaHotspot.")
-	if err := startHotspot(); err != nil {
-		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
-		// Generate signal to stop Sensor Hub
-		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-	}
+// func loginWiFiViaHotspot() {
+// 	logger.Debug("Entered loginWiFiViaHotspot.")
+// 	if err := startHotspot(); err != nil {
+// 		logger.Error(fmt.Sprintf("Failed to start hotspot: %v", err))
+// 		// Generate signal to stop Sensor Hub
+// 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+// 	}
 
-	// Create a channel to catch the WiFi login credentials once submitted
-	credChan := make(chan [2]string)
-	server := startWebServer(credChan)
+// 	// Create a channel to catch the WiFi login credentials once submitted
+// 	credChan := make(chan [2]string)
+// 	server := startWebServer(credChan)
 
-	// Wait until the user sends credentials via the captive portal web interface
-	logger.Debug("Waiting for user to enter SSID and password")
-	creds := <-credChan
-	currentWiFi.SSID = creds[0]
-	currentWiFi.PWD = creds[1]
+// 	// Wait until the user sends credentials via the captive portal web interface
+// 	logger.Debug("Waiting for user to enter SSID and password")
+// 	creds := <-credChan
+// 	currentWiFi.SSID = creds[0]
+// 	currentWiFi.PWD = creds[1]
 
-	logger.Debug(fmt.Sprintf("Received credentials for SSID: %s. \n Shutting down web server to connect to WiFi.", currentWiFi.SSID))
-	// Persist WiFi credentials
-	currentWiFi.saveSSIDPWD()
+// 	logger.Debug(fmt.Sprintf("Received credentials for SSID: %s. \n Shutting down web server to connect to WiFi.", currentWiFi.SSID))
+// 	// Persist WiFi credentials
+// 	currentWiFi.saveSSIDPWD()
 
-	// Gracefully shut down web server so the HTTP response finishes flushing to the browser
-	_ = server.Shutdown(context.Background())
+// 	// Gracefully shut down web server so the HTTP response finishes flushing to the browser
+// 	_ = server.Shutdown(context.Background())
 
-	logger.Debug("Stopping hotspot.")
-	_ = stopHotspot()
+// 	logger.Debug("Stopping hotspot.")
+// 	_ = stopHotspot()
 
-	// Use credentials just received to recreate a clean wifi-home connection profile
-	// Add the new connection profile before trying to bring it up
-	// Delete existing profile if it exisits
-	if connectionExists(WiFiConnName) {
-		deleteConnection(WiFiConnName)
-	}
-	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
-	if err != nil {
-		// Could not connect to WiFi, loop until success
-		logger.Debug("Failed to connect to WiFi. Try again in 5 seconds.")
-		time.Sleep(time.Duration(5) * time.Second)
-		loginWiFiViaHotspot()
-	}
-	// WiFi Connected
-	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
-	wifi = true
-}
+// 	// Use credentials just received to recreate a clean wifi-home connection profile
+// 	// Add the new connection profile before trying to bring it up
+// 	// Delete existing profile if it exisits
+// 	if connectionExists(WiFiConnName) {
+// 		deleteConnection(WiFiConnName)
+// 	}
+// 	err := addWifiConnection(WiFiConnName, currentWiFi.SSID, currentWiFi.PWD)
+// 	if err != nil {
+// 		// Could not connect to WiFi, loop until success
+// 		logger.Debug("Failed to connect to WiFi. Try again in 5 seconds.")
+// 		time.Sleep(time.Duration(5) * time.Second)
+// 		loginWiFiViaHotspot()
+// 	}
+// 	// WiFi Connected
+// 	logger.Info(fmt.Sprintf("Successfully connected to the new Wi-Fi network %s", currentWiFi.SSID))
+// 	wifi = true
+// }
 
 // Shuts down the temporary hotspot network
 func stopHotspot() error {
@@ -304,58 +301,58 @@ func connectionExists(name string) bool {
 }
 
 // Launches a temporary lightweight Go HTTP web server
-func startWebServer(credChan chan [2]string) *http.Server {
-	logger.Debug("Entered startWebServer")
-	mux := http.NewServeMux()
-	server := &http.Server{Addr: listenAddr, Handler: mux}
+// func startWebServer(credChan chan [2]string) *http.Server {
+// 	logger.Debug("Entered startWebServer")
+// 	mux := http.NewServeMux()
+// 	server := &http.Server{Addr: listenAddr, Handler: mux}
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// tmpl, _ := template.New("form").Parse(inputformHTML)
-		// _ = tmpl.Execute(w, nil)
-		data := SSIDPageData{Refresh: refreshSeconds}
+// 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+// 		// tmpl, _ := template.New("form").Parse(inputformHTML)
+// 		// _ = tmpl.Execute(w, nil)
+// 		data := SSIDPageData{Refresh: refreshSeconds}
 
-		// Use nmcli to list Wi-Fi networks in terse machine-friendly format
-		// fields: SSID,SIGNAL,SECURITY, -p pretty, -t terse, -f fields
-		out, err := runNmcli("-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
-		if err != nil {
-			data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
-			_ = pageTmpl.Execute(w, data)
-			return
-		}
+// 		// Use nmcli to list Wi-Fi networks in terse machine-friendly format
+// 		// fields: SSID,SIGNAL,SECURITY, -p pretty, -t terse, -f fields
+// 		out, err := runNmcli("-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
+// 		if err != nil {
+// 			data.Error = strings.TrimSpace(err.Error() + " — output: " + out)
+// 			_ = pageTmpl.Execute(w, data)
+// 			return
+// 		}
 
-		data.Networks = parseNmcliScan(out)
-		if err := pageTmpl.Execute(w, data); err != nil {
-			http.Error(w, "template render error", http.StatusInternalServerError)
-		}
+// 		data.Networks = parseNmcliScan(out)
+// 		if err := pageTmpl.Execute(w, data); err != nil {
+// 			http.Error(w, "template render error", http.StatusInternalServerError)
+// 		}
 
-	})
+// 	})
 
-	mux.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Redirect(w, r, "/", http.StatusSeeOther)
-			return
-		}
-		ssid := r.FormValue("ssid")
-		password := r.FormValue("password")
+// 	mux.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
+// 		if r.Method != http.MethodPost {
+// 			http.Redirect(w, r, "/", http.StatusSeeOther)
+// 			return
+// 		}
+// 		ssid := r.FormValue("ssid")
+// 		password := r.FormValue("password")
 
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, "<h3>Attempting connection to %s...</h3><p>You can close this window. The hotspot will close shortly.</p>", ssid)
+// 		w.Header().Set("Content-Type", "text/html")
+// 		fmt.Fprintf(w, "<h3>Attempting connection to %s...</h3><p>You can close this window. The hotspot will close shortly.</p>", ssid)
 
-		// Send credentials to the main block channel after a brief pause
-		go func() {
-			time.Sleep(5 * time.Second)
-			credChan <- [2]string{ssid, password}
-		}()
-	})
+// 		// Send credentials to the main block channel after a brief pause
+// 		go func() {
+// 			time.Sleep(5 * time.Second)
+// 			credChan <- [2]string{ssid, password}
+// 		}()
+// 	})
 
-	go func() {
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("HTTP server failed: %v", err)
-		}
-	}()
+// 	go func() {
+// 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+// 			log.Fatalf("HTTP server failed: %v", err)
+// 		}
+// 	}()
 
-	return server
-}
+// 	return server
+// }
 
 // runNmcli runs nmcli command with timeout and returns stdout or an error.
 func runNmcli(args ...string) (string, error) {
