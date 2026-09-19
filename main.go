@@ -13,7 +13,7 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.12.0"
+const AppVersion = "0.12.1"
 const (
 	OFF int = iota
 	REDON
