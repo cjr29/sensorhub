@@ -9,11 +9,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"periph.io/x/host/v3"
 )
 
-const AppVersion = "0.12.1"
+const AppVersion = "0.12.2"
 const (
 	OFF int = iota
 	REDON
@@ -63,17 +61,17 @@ func main() {
 	time.Sleep(time.Duration(1) * time.Second) // Brief pause before first write
 	lightCmd <- REDSLOW                        // Initial activity light state while booting
 
-	// Initialize the host GPIO driver to support LED and pushbutton.
-	if !busConfigured {
-		if _, err := host.Init(); err != nil {
-			logger.Error(fmt.Sprintf("Error initializing GPIO: %v\n", err))
-			os.Exit(1)
-		}
-		// Wait for the bus to be initialized before sending commands to it
-		time.Sleep(time.Duration(1) * time.Second)
-		busConfigured = true
-	}
-	logger.Debug("GPIO bus is configured")
+	// // Initialize the host GPIO driver to support LED and pushbutton.
+	// if !busConfigured {
+	// 	if _, err := host.Init(); err != nil {
+	// 		logger.Error(fmt.Sprintf("Error initializing GPIO: %v\n", err))
+	// 		os.Exit(1)
+	// 	}
+	// 	// Wait for the bus to be initialized before sending commands to it
+	// 	time.Sleep(time.Duration(1) * time.Second)
+	// 	busConfigured = true
+	// }
+	// logger.Debug("GPIO bus is configured")
 
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
