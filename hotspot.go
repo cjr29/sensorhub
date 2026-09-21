@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"os"
 	"os/exec"
 	"strings"
@@ -43,7 +42,7 @@ type SSIDPageData struct {
 	Error    string
 }
 
-var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
+// var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
 
 var currentWiFi = WiFi{}
 
