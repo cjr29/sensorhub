@@ -26,7 +26,9 @@ import (
 
 const tableName = "SENSORS"
 const restPort = ":5000"
-const pinggyTunnelFile = "/usr/local/bin/pinggy_tunnel.sh"
+const pinggyTunnelFile = "/usr/local/bin/test_tunnel.sh"
+
+// const pinggyTunnelFile = "/usr/local/bin/pinggy_tunnel.sh"
 
 var db *sql.DB
 var pinggyTunnelMu sync.Mutex
