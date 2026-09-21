@@ -345,7 +345,7 @@ func handlePostPinggyTunnel(w http.ResponseWriter, r *http.Request) {
 	if !strings.Contains(string(original), "<placeholder>") {
 		http.Error(
 			w,
-			"Placeholder was not found in tunnel script: "+"string(originl)",
+			"Placeholder was not found in tunnel script: "+string(original),
 			http.StatusInternalServerError,
 		)
 		return
