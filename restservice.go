@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -25,8 +26,10 @@ import (
 
 const tableName = "SENSORS"
 const restPort = ":5000"
+const pinggyTunnelFile = "/usr/local/bin/pinggy_tunnel.sh"
 
 var db *sql.DB
+var pinggyTunnelMu sync.Mutex
 
 type Sensor struct {
 	ID          int     `json:"ID"`
@@ -42,6 +45,10 @@ type Sensor struct {
 	Location    string  `json:"LOCATION"`
 	Description string  `json:"DESCRIPTION"`
 	Active      int     `json:"ACTIVE"`
+}
+
+type pinggyTunnelRequest struct {
+	Value string `json:"value"`
 }
 
 func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, lightCmd chan int) {
@@ -69,6 +76,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, l
 	r.Get("/station", handleGetStation)
 	r.Get("/ssids", getSSIDs)
 	r.Post("/connect-ssid", handlePostConnectSSID)
+	r.Post("/pinggy-tunnel", handlePostPinggyTunnel)
 	r.Patch("/sensor/rename", handlePatchSensorRename)
 	r.Patch("/sensor/full", handlePatchSensorFull)
 	r.Patch("/hostname", handleHostRename)
@@ -298,6 +306,135 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"message": "Connected successfully",
 		"SSID":    ssid,
+	})
+}
+
+func handlePostPinggyTunnel(w http.ResponseWriter, r *http.Request) {
+	var req pinggyTunnelRequest
+
+	// Limit request size to prevent unnecessarily large input.
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+	defer r.Body.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		http.Error(w, "Request body must be JSON: {\"value\":\"...\"}", http.StatusBadRequest)
+		return
+	}
+
+	// Reject trailing JSON or other data after the first object.
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		http.Error(w, "Request body contains unexpected additional data", http.StatusBadRequest)
+		return
+	}
+
+	pinggyTunnelMu.Lock()
+	defer pinggyTunnelMu.Unlock()
+
+	original, err := os.ReadFile(pinggyTunnelFile)
+	if err != nil {
+		http.Error(
+			w,
+			fmt.Sprintf("Unable to read tunnel script: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	if !strings.Contains(string(original), "<placeholder>") {
+		http.Error(
+			w,
+			"Placeholder was not found in tunnel script",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	info, err := os.Stat(pinggyTunnelFile)
+	if err != nil {
+		http.Error(
+			w,
+			fmt.Sprintf("Unable to stat tunnel script: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	updated := strings.ReplaceAll(
+		string(original),
+		"<placeholder>",
+		req.Value,
+	)
+
+	// Create the temporary file in the same directory so Rename is atomic.
+	tempFile, err := os.CreateTemp("/usr/local/bin", ".pinggy_tunnel.sh-*")
+	if err != nil {
+		http.Error(
+			w,
+			fmt.Sprintf("Unable to create temporary tunnel script: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	tempName := tempFile.Name()
+	defer os.Remove(tempName)
+
+	// Preserve the original permission bits.
+	if err := tempFile.Chmod(info.Mode().Perm()); err != nil {
+		_ = tempFile.Close()
+		http.Error(
+			w,
+			fmt.Sprintf("Unable to set tunnel script permissions: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	if _, err := tempFile.WriteString(updated); err != nil {
+		_ = tempFile.Close()
+		http.Error(
+			w,
+			fmt.Sprintf("Unable to write temporary tunnel script: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	if err := tempFile.Sync(); err != nil {
+		_ = tempFile.Close()
+		http.Error(
+			w,
+			fmt.Sprintf("Unable to sync temporary tunnel script: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	if err := tempFile.Close(); err != nil {
+		http.Error(
+			w,
+			fmt.Sprintf("Unable to close temporary tunnel script: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	if err := os.Rename(tempName, pinggyTunnelFile); err != nil {
+		http.Error(
+			w,
+			fmt.Sprintf("Unable to replace tunnel script: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"status": "updated",
 	})
 }
 
