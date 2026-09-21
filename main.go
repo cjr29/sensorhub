@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.13.0"
+const AppVersion = "0.13.1"
 const (
 	OFF int = iota
 	REDON
