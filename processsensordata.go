@@ -123,6 +123,11 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 	}
 
 	// Get hostname from global variable set in main.go
+	hostName, err := getHostname()
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Error getting hostname: %v", err))
+		return
+	}
 	sStation := hostName // hostname = 'sensorhub' + last 12 hex digits of MAC address of wlan0 without colons
 	// parts[0] is "sensorhub", parts[1] is "weather", parts[2] is "sensors", parts[3] is sensorID
 	sWeather := parts[1]
@@ -165,7 +170,7 @@ func onMessage(c mqtt.Client, m mqtt.Message) {
 		sensorID, sStation, toString(payload["model"]),
 	)
 
-	err := row.Scan(
+	err = row.Scan(
 		&curID, &curTime, &curSensorID, &curModel, &curChannel, &curBattery,
 		&curTemperature, &curHumidity, &curSensorName,
 		&curStation,
