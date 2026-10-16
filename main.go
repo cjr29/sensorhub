@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.13.6"
+const AppVersion = "0.15.0" // Use HTTPS in REST service and for OTA updates. Use TLS with a self-signed certificate for the REST service. Use a long random bearer token for authentication.
 const (
 	OFF int = iota
 	REDON

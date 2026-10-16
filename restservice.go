@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -12,11 +14,9 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -26,11 +26,37 @@ import (
 
 const tableName = "SENSORS"
 const restPort = ":5000"
+
 // const pinggyTunnelFile = "/usr/local/bin/test_tunnel.sh"
 const pinggyTunnelFile = "/usr/local/bin/pinggy_tunnel.sh"
+const maxRESTRequestBody = 64 << 10
 
 var db *sql.DB
 var pinggyTunnelMu sync.Mutex
+
+type restSecurityConfig struct {
+	certFile string
+	keyFile  string
+	token    string
+}
+
+func loadRESTSecurityConfig() (restSecurityConfig, error) {
+	config := restSecurityConfig{
+		certFile: os.Getenv("REST_TLS_CERT"),
+		keyFile:  os.Getenv("REST_TLS_KEY"),
+		token:    os.Getenv("REST_BEARER_TOKEN"),
+	}
+	if config.certFile == "" && config.keyFile == "" && config.token == "" {
+		return config, nil
+	}
+	if config.certFile == "" || config.keyFile == "" || config.token == "" {
+		return restSecurityConfig{}, errors.New("REST_TLS_CERT, REST_TLS_KEY, and REST_BEARER_TOKEN must all be set together")
+	}
+	if len(config.token) < 32 {
+		return restSecurityConfig{}, errors.New("REST_BEARER_TOKEN must contain at least 32 characters")
+	}
+	return config, nil
+}
 
 type Sensor struct {
 	ID          int     `json:"ID"`
@@ -54,23 +80,35 @@ type pinggyTunnelRequest struct {
 
 func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, lightCmd chan int) {
 	defer wg.Done()
+
+	security, err := loadRESTSecurityConfig()
+	if err != nil {
+		logger.Error("Invalid REST security configuration", "err", err)
+		return
+	}
+
 	esc := url.PathEscape(dbPath)
 	dsn := fmt.Sprintf("file:%s?mode=rw", esc)
-	var err error
 	db, err = sql.Open("sqlite", dsn)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Unable to open sqlite database: %v", err))
+		logger.Error("Unable to open sqlite database", "err", err)
+		return
 	}
 	defer db.Close()
 
 	if err := db.PingContext(ctx); err != nil {
-		logger.Error(fmt.Sprintf("Unable to ping sqlite database: %v", err))
+		logger.Error("Unable to ping sqlite database", "err", err)
+		return
 	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
+	r.Use(securityHeaders(security.token != ""))
+	if security.token != "" {
+		r.Use(bearerTokenAuth(security.token))
+	}
 
 	r.Get("/sensors", handleGetSensors)
 	r.Get("/sensor/{id}", handleGetSensorID)
@@ -83,29 +121,96 @@ func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, l
 	r.Patch("/hostname", handleHostRename)
 
 	addr := restPort
-
 	server := &http.Server{
-		Addr:    addr,
-		Handler: r,
+		Addr:              addr,
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
+		TLSConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
 	}
+	serveErr := make(chan error, 1)
 	go func() {
-		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			logger.Error(fmt.Sprintf("REST HTTP server error: %v", err))
+		if security.token != "" {
+			serveErr <- server.ListenAndServeTLS(security.certFile, security.keyFile)
+		} else {
+			serveErr <- server.ListenAndServe()
 		}
-		logger.Debug("!!!!! Stopped serving new REST connections.")
 	}()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
+	select {
+	case <-ctx.Done():
+	case err := <-serveErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("REST server stopped unexpectedly", "err", err)
+		}
+	}
 
 	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownRelease()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.Error(fmt.Sprintf("HTTP shutdown error: %v", err))
+		logger.Error("HTTP shutdown error", "err", err)
 	}
 	logger.Debug("!!!!! HTTP REST Server graceful shutdown complete.")
+}
+
+func securityHeaders(enableHSTS bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Referrer-Policy", "no-referrer")
+			if enableHSTS {
+				w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func bearerTokenAuth(token string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			values := r.Header.Values("Authorization")
+			if len(values) != 1 {
+				w.Header().Set("WWW-Authenticate", "Bearer")
+				writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+				return
+			}
+
+			scheme, provided, found := strings.Cut(values[0], " ")
+			if !found || !strings.EqualFold(scheme, "Bearer") ||
+				subtle.ConstantTimeCompare([]byte(provided), []byte(token)) != 1 {
+				w.Header().Set("WWW-Authenticate", "Bearer")
+				writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRESTRequestBody)
+	defer r.Body.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(dst); err != nil {
+		return err
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return errors.New("request body contains multiple JSON values")
+		}
+		return err
+	}
+	return nil
 }
 
 /************** GET HANDLERS ******************/
@@ -229,7 +334,7 @@ type connectSSIDReq struct {
 
 func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	var req connectSSIDReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": "JSON decode error",
 		})
@@ -249,25 +354,12 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	var connectErr error
 
 	for attempt := 1; attempt <= maxConnectAttempts; attempt++ {
-		logger.Info(fmt.Sprintf(
-			"Connecting to WiFi SSID %q, attempt %d/%d",
-			ssid,
-			attempt,
-			maxConnectAttempts,
-		))
-
 		connectErr = connectToSSID(ssid, pwd)
 		if connectErr == nil {
 			break
 		}
 
-		logger.Error(fmt.Sprintf(
-			"Failed to connect to WiFi SSID %q on attempt %d/%d: %v",
-			ssid,
-			attempt,
-			maxConnectAttempts,
-			connectErr,
-		))
+		logger.Error("Failed to connect to Wi-Fi", "attempt", attempt, "max_attempts", maxConnectAttempts)
 
 		if attempt < maxConnectAttempts {
 			select {
@@ -290,9 +382,14 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 
 	// Persist WiFi credentials only after a successful connection.
 	currentWiFi.SSID = ssid
-	// Do not log or expose the actual password.
-	currentWiFi.PWD = "password"
-	currentWiFi.saveSSIDPWD()
+	currentWiFi.PWD = pwd
+	if err := currentWiFi.saveSSIDPWD(); err != nil {
+		logger.Error("Unable to persist Wi-Fi credentials", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": "Connected, but failed to persist Wi-Fi credentials",
+		})
+		return
+	}
 
 	// Restart avahi-daemon to update the mDNS hostname.
 	if err := restartAvahiDaemon(); err != nil {
@@ -313,20 +410,8 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 func handlePostPinggyTunnel(w http.ResponseWriter, r *http.Request) {
 	var req pinggyTunnelRequest
 
-	// Limit request size to prevent unnecessarily large input.
-	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
-	defer r.Body.Close()
-
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&req); err != nil {
+	if err := decodeJSONBody(w, r, &req); err != nil {
 		http.Error(w, "Request body must be JSON: {\"value\":\"...\"}", http.StatusBadRequest)
-		return
-	}
-
-	// Reject trailing JSON or other data after the first object.
-	var extra any
-	if err := decoder.Decode(&extra); err != io.EOF {
-		http.Error(w, "Request body contains unexpected additional data", http.StatusBadRequest)
 		return
 	}
 
@@ -335,30 +420,21 @@ func handlePostPinggyTunnel(w http.ResponseWriter, r *http.Request) {
 
 	original, err := os.ReadFile(pinggyTunnelFile)
 	if err != nil {
-		http.Error(
-			w,
-			fmt.Sprintf("Unable to read tunnel script: %v", err),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Unable to read tunnel script", "err", err)
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
 	if !strings.Contains(string(original), "<placeholder>") {
-		http.Error(
-			w,
-			"Placeholder was not found in tunnel script: "+string(original),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Placeholder was not found in tunnel script")
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
 	info, err := os.Stat(pinggyTunnelFile)
 	if err != nil {
-		http.Error(
-			w,
-			fmt.Sprintf("Unable to stat tunnel script: %v", err),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Unable to stat tunnel script", "err", err)
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
@@ -371,11 +447,8 @@ func handlePostPinggyTunnel(w http.ResponseWriter, r *http.Request) {
 	// Create the temporary file in the same directory so Rename is atomic.
 	tempFile, err := os.CreateTemp("/usr/local/bin", ".pinggy_tunnel.sh-*")
 	if err != nil {
-		http.Error(
-			w,
-			fmt.Sprintf("Unable to create temporary tunnel script: %v", err),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Unable to create temporary tunnel script", "err", err)
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
@@ -385,49 +458,34 @@ func handlePostPinggyTunnel(w http.ResponseWriter, r *http.Request) {
 	// Preserve the original permission bits.
 	if err := tempFile.Chmod(info.Mode().Perm()); err != nil {
 		_ = tempFile.Close()
-		http.Error(
-			w,
-			fmt.Sprintf("Unable to set tunnel script permissions: %v", err),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Unable to set tunnel script permissions", "err", err)
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
 	if _, err := tempFile.WriteString(updated); err != nil {
 		_ = tempFile.Close()
-		http.Error(
-			w,
-			fmt.Sprintf("Unable to write temporary tunnel script: %v", err),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Unable to write temporary tunnel script", "err", err)
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
 	if err := tempFile.Sync(); err != nil {
 		_ = tempFile.Close()
-		http.Error(
-			w,
-			fmt.Sprintf("Unable to sync temporary tunnel script: %v", err),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Unable to sync temporary tunnel script", "err", err)
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
 	if err := tempFile.Close(); err != nil {
-		http.Error(
-			w,
-			fmt.Sprintf("Unable to close temporary tunnel script: %v", err),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Unable to close temporary tunnel script", "err", err)
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
 	if err := os.Rename(tempName, pinggyTunnelFile); err != nil {
-		http.Error(
-			w,
-			fmt.Sprintf("Unable to replace tunnel script: %v", err),
-			http.StatusInternalServerError,
-		)
+		logger.Error("Unable to replace tunnel script", "err", err)
+		http.Error(w, "Unable to update tunnel configuration", http.StatusInternalServerError)
 		return
 	}
 
@@ -447,7 +505,7 @@ type patchRenameReq struct {
 
 func handlePatchSensorRename(w http.ResponseWriter, r *http.Request) {
 	var req patchRenameReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSONBody(w, r, &req); err != nil {
 		w.WriteHeader(http.StatusNoContent)
 		writeJSON(w, http.StatusNoContent, map[string]any{"error": "JSON decode error"})
 		return
@@ -486,7 +544,7 @@ func handlePatchSensorRename(w http.ResponseWriter, r *http.Request) {
 
 func handlePatchSensorFull(w http.ResponseWriter, r *http.Request) {
 	var req map[string]any
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSONBody(w, r, &req); err != nil {
 		w.WriteHeader(http.StatusNoContent)
 		writeJSON(w, http.StatusNoContent, map[string]any{"error": "JSON decode error"})
 		return
@@ -544,7 +602,7 @@ type patchHostnameReq struct {
 
 func handleHostRename(w http.ResponseWriter, r *http.Request) {
 	var req patchHostnameReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSONBody(w, r, &req); err != nil {
 		w.WriteHeader(http.StatusNoContent)
 		writeJSON(w, http.StatusNoContent, map[string]any{"error": "JSON decode error"})
 		return

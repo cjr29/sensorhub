@@ -406,33 +406,26 @@ func parseNmcliScan(raw string) []Network {
 }
 
 func (w *WiFi) saveSSIDPWD() error {
-	// Write the SSID from struct w to the config file for persistence
-	// Overwrites any existing content, which is fine since we only need to store the current SSID
-	// Creates the file if it doesn't exist, or truncates it if it does.
-	// Permissions are set to 0644 (read/write for owner, read for group and others).
-	_, err := os.Stat(pathToHubConfig)
-	if os.IsNotExist(err) {
-		f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_EXCL, 0644)
-		if err != nil {
-			logger.Error("Unable to create configuration file. Halting program.")
-			return err
-		}
-		_ = f.Close()
-	}
-	// Convert to JSON
 	jsonData, err := json.Marshal(w)
 	if err != nil {
 		logger.Error("Unable to convert SSID and password to JSON")
 		return err
 	}
-	// Write JSON to file
-	err = os.WriteFile(pathToHubConfig, jsonData, 0644)
+	f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
-		logger.Error("Unable to write SSID:PWD to config file")
+		logger.Error("Unable to open Wi-Fi configuration file")
 		return err
 	}
-	// Successful write
-	return nil
+	defer f.Close()
+	if err := f.Chmod(0o600); err != nil {
+		logger.Error("Unable to secure Wi-Fi configuration file permissions")
+		return err
+	}
+	if _, err := f.Write(jsonData); err != nil {
+		logger.Error("Unable to write Wi-Fi configuration file")
+		return err
+	}
+	return f.Sync()
 }
 
 func (w *WiFi) getSSIDPWD() (bool, error) {
