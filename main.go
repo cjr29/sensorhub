@@ -11,7 +11,11 @@ import (
 	"time"
 )
 
-const AppVersion = "0.15.0" // Use HTTPS in REST service and for OTA updates. Use TLS with a self-signed certificate for the REST service. Use a long random bearer token for authentication.
+const AppVersion = "0.15.1" // Update README to explain that we aren't using Bearer authentication for the REST service.
+// The REST service is only available on the local network, so Bearer authentication is not needed.
+// Remote access can be provided by using a reverse tunnel like pinggy.io or ngrok.io, which will provide a secure
+// connection to the REST service without needing Bearer authentication.
+
 const (
 	OFF int = iota
 	REDON

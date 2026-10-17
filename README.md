@@ -35,6 +35,10 @@ Clients must use HTTPS and add the bearer header to both read and write calls.
 Removing the three variables restores the existing HTTP behavior for clients
 that have not yet been updated.
 
+We DO NOT USE bearer-token authentication in this implementation because
+the sensorhub is local to the client. If we use a reverse tunnel like pinggy.io,
+then the reverse tunnel provides the API security.
+
 The systemd service script for sensorhub-hotspot redirects stdout to /var/log/sensorhub.log
 
 Responds to curl commands:
