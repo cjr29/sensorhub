@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"crypto/tls"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -110,6 +111,7 @@ func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, l
 		r.Use(bearerTokenAuth(security.token))
 	}
 
+	r.Get("/", handleWiFiSetupPage)
 	r.Get("/sensors", handleGetSensors)
 	r.Get("/sensor/{id}", handleGetSensorID)
 	r.Get("/station", handleGetStation)
@@ -157,6 +159,16 @@ func restService(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, l
 		logger.Error("HTTP shutdown error", "err", err)
 	}
 	logger.Debug("!!!!! HTTP REST Server graceful shutdown complete.")
+}
+
+//go:embed setup.html
+var wifiSetupPage []byte
+
+func handleWiFiSetupPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := w.Write(wifiSetupPage); err != nil {
+		logger.Error("Unable to serve Wi-Fi setup page", "err", err)
+	}
 }
 
 func securityHeaders(enableHSTS bool) func(http.Handler) http.Handler {

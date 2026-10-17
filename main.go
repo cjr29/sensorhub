@@ -11,10 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.15.1" // Update README to explain that we aren't using Bearer authentication for the REST service.
-// The REST service is only available on the local network, so Bearer authentication is not needed.
-// Remote access can be provided by using a reverse tunnel like pinggy.io or ngrok.io, which will provide a secure
-// connection to the REST service without needing Bearer authentication.
+const AppVersion = "0.16.0" // Add browser-based configuration and sensor data display
 
 const (
 	OFF int = iota

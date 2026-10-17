@@ -90,6 +90,23 @@ func TestSecurityHeaders(t *testing.T) {
 	}
 }
 
+func TestWiFiSetupPage(t *testing.T) {
+	response := httptest.NewRecorder()
+	handleWiFiSetupPage(response, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+	}
+	if got := response.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type = %q, want text/html; charset=utf-8", got)
+	}
+	for _, want := range []string{"/ssids", "/connect-ssid", "Wi-Fi Setup"} {
+		if !strings.Contains(response.Body.String(), want) {
+			t.Errorf("setup page does not contain %q", want)
+		}
+	}
+}
+
 func TestDecodeJSONBodyRejectsOversizedAndTrailingData(t *testing.T) {
 	for _, body := range []string{
 		`{"ok":true} {"extra":true}`,

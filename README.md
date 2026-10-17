@@ -41,6 +41,15 @@ then the reverse tunnel provides the API security.
 
 The systemd service script for sensorhub-hotspot redirects stdout to /var/log/sensorhub.log
 
+## Browser Wi-Fi setup
+
+When `/var/sensorhub/sensorhub.conf` is missing, SensorHub starts its default
+`SensorHub` hotspot. Join that network from a phone or computer and open
+`http://10.42.0.1:5000/` in a browser to scan for networks and configure Wi-Fi.
+The browser tool uses the same `/ssids` and `/connect-ssid` REST endpoints as
+the iOS client. After a successful setup, reconnect your device to the
+configured Wi-Fi network.
+
 Responds to curl commands:
  1) Rename sensorhub from 'sensorhub' to 'home' without reboot:
     curl -X PATCH -H "Content-Type: application/json" -d '{"HOSTNAME":"home"}' http://sensorhub.local:5000/hostname
