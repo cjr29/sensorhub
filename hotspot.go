@@ -49,7 +49,7 @@ var currentWiFi = WiFi{}
 func wifiConfigured() bool {
 	logger.Debug("Entering wifiConfigured.")
 	// Does config file exist?
-	_, err := currentWiFi.getSSIDPWD()
+	_, err := currentWiFi.getSSID()
 	if err != nil {
 		// WiFi not configured
 		logger.Debug("Unable to find or read config file. WiFi not configured.")
@@ -333,7 +333,7 @@ func saveSSIDConfig(path, ssid string) error {
 	return f.Sync()
 }
 
-func (w *WiFi) getSSIDPWD() (bool, error) {
+func (w *WiFi) getSSID() (bool, error) {
 	// Read JSON from file
 	jsonData, err := os.ReadFile(pathToHubConfig)
 	if err != nil {
@@ -350,20 +350,13 @@ func (w *WiFi) getSSIDPWD() (bool, error) {
 }
 
 func loadSSIDConfig(path string, jsonData []byte) (WiFi, error) {
-	// Read legacy passwords only to detect and remove them from existing files.
 	var config struct {
-		SSID string          `json:"ssid"`
-		PWD  json.RawMessage `json:"pwd"`
+		SSID string `json:"ssid"`
 	}
 	if err := json.Unmarshal(jsonData, &config); err != nil {
 		return WiFi{}, err
 	}
 	wifiConfig := WiFi{SSID: config.SSID}
-	if config.PWD != nil {
-		if err := saveSSIDConfig(path, wifiConfig.SSID); err != nil {
-			return WiFi{}, err
-		}
-	}
 	return wifiConfig, nil
 }
 
