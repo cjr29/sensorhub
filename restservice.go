@@ -346,6 +346,7 @@ type connectSSIDReq struct {
 
 func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	var req connectSSIDReq
+	logger.Debug(fmt.Sprintf("Received Wi-Fi connection request: SSID=%q", req.SSID))
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": "JSON decode error",
@@ -386,6 +387,7 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if connectErr != nil {
+		logger.Info("Failed to connect to Wi-Fi after three attempts", "err", connectErr)	
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"error": "Failed to connect after three attempts",
 		})
@@ -413,6 +415,7 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 
 	lightCmd <- GREENON
 
+	logger.Info(fmt.Sprintf("Successfully connected to Wi-Fi SSID %q", ssid))
 	writeJSON(w, http.StatusOK, map[string]any{
 		"message": "Connected successfully",
 		"SSID":    ssid,

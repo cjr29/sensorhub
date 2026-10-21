@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.16.0" // Add browser-based configuration and sensor data display
+const AppVersion = "0.16.1" // Add browser-based configuration and sensor data display
 
 const (
 	OFF int = iota
