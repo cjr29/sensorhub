@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.17.2" // Don't save password in config file. Use NetworkManager to store password securely.
+const AppVersion = "0.17.3" // Don't save password in config file. Use NetworkManager to store password securely.
 
 const (
 	OFF int = iota
@@ -206,6 +206,7 @@ func main() {
 			close(lightCmd) // Close channel to HubControl
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
+			return
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
 			lightCmd <- OFF
@@ -213,6 +214,7 @@ func main() {
 			close(lightCmd) // Close channel to HubControl
 			wg.Wait()
 			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
+			return
 		case syscall.SIGHUP:
 			// watch for log rotations and reopen log
 			logger.Debug("SIGHUP received by main thread.")
