@@ -387,20 +387,19 @@ func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if connectErr != nil {
-		logger.Info("Failed to connect to Wi-Fi after three attempts", "err", connectErr)	
+		logger.Info("Failed to connect to Wi-Fi after three attempts", "err", connectErr)
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"error": "Failed to connect after three attempts",
 		})
 		return
 	}
 
-	// Persist WiFi credentials only after a successful connection.
+	// Persist the SSID only after a successful connection. NetworkManager stores the password.
 	currentWiFi.SSID = ssid
-	currentWiFi.PWD = pwd
-	if err := currentWiFi.saveSSIDPWD(); err != nil {
-		logger.Error("Unable to persist Wi-Fi credentials", "err", err)
+	if err := currentWiFi.saveSSID(); err != nil {
+		logger.Error("Unable to persist Wi-Fi SSID", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"error": "Connected, but failed to persist Wi-Fi credentials",
+			"error": "Connected, but failed to persist Wi-Fi SSID",
 		})
 		return
 	}

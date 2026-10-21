@@ -27,7 +27,6 @@ const (
 
 type WiFi struct {
 	SSID string `json:"ssid"`
-	PWD  string `json:"pwd"`
 }
 
 type Network struct {
@@ -227,11 +226,11 @@ func connectToWiFi(connectionName, ssid string, pwd string) error {
 		return err
 	}
 	// Connected to WiFi, save SSID for future reboots
-	logger.Debug("Connected to wifi now. Persisting SSID and PWD.")
-	if err := currentWiFi.saveSSIDPWD(); err == nil {
-		logger.Debug(fmt.Sprintf("WiFi SSID and PWD saved to %s", pathToHubConfig))
+	logger.Debug("Connected to wifi now. Persisting SSID.")
+	if err := (&WiFi{SSID: ssid}).saveSSID(); err == nil {
+		logger.Debug(fmt.Sprintf("WiFi SSID saved to %s", pathToHubConfig))
 	} else {
-		logger.Error(fmt.Sprintf("Unable to save SSID and password to config file. Error: %s", err))
+		logger.Error(fmt.Sprintf("Unable to save SSID to config file. Error: %s", err))
 		return err
 	}
 	return nil
@@ -306,13 +305,18 @@ func parseNmcliScan(raw string) []Network {
 	return nets
 }
 
-func (w *WiFi) saveSSIDPWD() error {
-	jsonData, err := json.Marshal(w)
+func (w *WiFi) saveSSID() error {
+	return saveSSIDConfig(pathToHubConfig, w.SSID)
+}
+
+func saveSSIDConfig(path, ssid string) error {
+	config := WiFi{SSID: ssid}
+	jsonData, err := json.Marshal(config)
 	if err != nil {
-		logger.Error("Unable to convert SSID and password to JSON")
+		logger.Error("Unable to convert SSID to JSON")
 		return err
 	}
-	f, err := os.OpenFile(pathToHubConfig, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		logger.Error("Unable to open Wi-Fi configuration file")
 		return err
@@ -336,14 +340,31 @@ func (w *WiFi) getSSIDPWD() (bool, error) {
 		logger.Error("Unable to read the configuration file")
 		return false, err
 	}
-	// Convert JSON to struct
-	err = json.Unmarshal(jsonData, w)
+	config, err := loadSSIDConfig(pathToHubConfig, jsonData)
 	if err != nil {
 		logger.Error("Unable to convert JSON to WiFi struct")
 		return false, err
 	}
-	// Successful. SSID in the WiFi struct w, don't save pwd
+	*w = config
 	return true, nil
+}
+
+func loadSSIDConfig(path string, jsonData []byte) (WiFi, error) {
+	// Read legacy passwords only to detect and remove them from existing files.
+	var config struct {
+		SSID string          `json:"ssid"`
+		PWD  json.RawMessage `json:"pwd"`
+	}
+	if err := json.Unmarshal(jsonData, &config); err != nil {
+		return WiFi{}, err
+	}
+	wifiConfig := WiFi{SSID: config.SSID}
+	if config.PWD != nil {
+		if err := saveSSIDConfig(path, wifiConfig.SSID); err != nil {
+			return WiFi{}, err
+		}
+	}
+	return wifiConfig, nil
 }
 
 // Check for live connectivity by pinging an public DNS server

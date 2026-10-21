@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.17.0" // Monitor config file and start hotspot if it disappears.
+const AppVersion = "0.17.1" // Don't save password in config file. Use NetworkManager to store password securely.
 
 const (
 	OFF int = iota
