@@ -346,7 +346,7 @@ type connectSSIDReq struct {
 
 func handlePostConnectSSID(w http.ResponseWriter, r *http.Request) {
 	var req connectSSIDReq
-	logger.Debug(fmt.Sprintf("Received Wi-Fi connection request: SSID=%q", req.SSID))
+	logger.Debug(fmt.Sprintf("Received Wi-Fi connection request: SSID=%q", strings.TrimSpace(req.SSID)))
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": "JSON decode error",

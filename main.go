@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.16.1" // Add browser-based configuration and sensor data display
+const AppVersion = "0.17.0" // Monitor config file and start hotspot if it disappears.
 
 const (
 	OFF int = iota
@@ -62,18 +62,6 @@ func main() {
 	time.Sleep(time.Duration(1) * time.Second) // Brief pause before first write
 	lightCmd <- REDSLOW                        // Initial activity light state while booting
 
-	// // Initialize the host GPIO driver to support LED and pushbutton.
-	// if !busConfigured {
-	// 	if _, err := host.Init(); err != nil {
-	// 		logger.Error(fmt.Sprintf("Error initializing GPIO: %v\n", err))
-	// 		os.Exit(1)
-	// 	}
-	// 	// Wait for the bus to be initialized before sending commands to it
-	// 	time.Sleep(time.Duration(1) * time.Second)
-	// 	busConfigured = true
-	// }
-	// logger.Debug("GPIO bus is configured")
-
 	// Check if sensor hub is already connected to a Wi-Fi network. If not, start the hotspot and web server for setup.
 	// Existence of the conf file is evidence that configuration has occurred. Then, need to test connection.
 	logger.Info("Verify that weather.db exists and is writable. If not, create it.")
@@ -86,8 +74,7 @@ func main() {
 	defer db.Close()
 
 	// Configure background processing channels
-	wg.Add(4)
-	defer wg.Done()
+	wg.Add(5)
 
 	const (
 		maxHotspotAttempts = 3
@@ -96,10 +83,11 @@ func main() {
 
 	logger.Info("Check if Sensor Hub WiFi has been configured.")
 
-	if !wifiConfigured() {
+	configured := wifiConfigured()
+	if !configured {
 		// WiFi is not configured. Try to start the hotspot up to three times.
 		var err error
-		lightCmd <- REDON
+		lightCmd <- REDSLOW
 		for attempt := 1; attempt <= maxHotspotAttempts; attempt++ {
 			logger.Info(fmt.Sprintf(
 				"Starting hotspot (attempt %d/%d)",
@@ -157,6 +145,7 @@ func main() {
 	// Starts now in order to handle Hotspot configuration if needed.
 	// If WiFi is already configured, the REST service will still be available for other requests.
 	go restService(ctx, &wg, logger, lightCmd)
+	go monitorHubConfig(ctx, &wg, logger, configured)
 
 	// See if Internet (remote) access is available
 	if hasInternet() {
