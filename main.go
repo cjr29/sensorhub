@@ -99,7 +99,7 @@ func main() {
 	if !wifiConfigured() {
 		// WiFi is not configured. Try to start the hotspot up to three times.
 		var err error
-
+		lightCmd <- REDON
 		for attempt := 1; attempt <= maxHotspotAttempts; attempt++ {
 			logger.Info(fmt.Sprintf(
 				"Starting hotspot (attempt %d/%d)",
@@ -142,7 +142,7 @@ func main() {
 		))
 
 		// Hotspot is running. Waiting for the user to configure WiFi using the iOS app.
-		lightCmd <- GREENSLOW
+		lightCmd <- REDSLOW
 	} else {
 		logger.Info(fmt.Sprintf(
 			"WiFi has been preconfigured. Using preset SSID %s",
