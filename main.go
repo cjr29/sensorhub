@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.18.0" // Turn off Debug logging for production. Change to Error for production. Clean-up code.
+const AppVersion = "0.18.1" // Log startup and shutdown with version number for troubleshooting
 
 const (
 	OFF int = iota
@@ -50,7 +50,7 @@ func main() {
 
 	configureLogging()
 
-	logger.Info("Starting Sensor Hub main program. Version: " + AppVersion)
+	logger.Error("Starting Sensor Hub main program. Version: " + AppVersion)
 
 	go func() {
 		if err := RunLEDStateWriter(ctxLight, lightCmd); err != nil &&
@@ -205,7 +205,7 @@ func main() {
 			stopLight()     // Tell HubControl to stop
 			close(lightCmd) // Close channel to HubControl
 			wg.Wait()
-			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
+			logger.Error("!!!!! All background processing halted. Exiting SensorHub.")
 			return
 		case syscall.SIGINT:
 			logger.Debug("SIGINT received by main thread; waiting for goroutines to exit")
@@ -213,7 +213,7 @@ func main() {
 			stopLight()     // Tell HubControl to stop
 			close(lightCmd) // Close channel to HubControl
 			wg.Wait()
-			logger.Info("!!!!! All background processing halted. Exiting SensorHub.")
+			logger.Error("!!!!! All background processing halted. Exiting SensorHub.")
 			return
 		case syscall.SIGHUP:
 			// watch for log rotations and reopen log
@@ -222,7 +222,7 @@ func main() {
 			if err := logFh.Reopen(logFile); err != nil {
 				logger.Error("Failed to reopen log file", "err", err)
 			} else {
-				logger.Info("Reopened log file after SIGHUP")
+				logger.Error("Reopened log file after SIGHUP")
 			}
 		}
 	}
