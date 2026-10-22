@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.18.1" // Log startup and shutdown with version number for troubleshooting
+const AppVersion = "0.18.2" // Update README
 
 const (
 	OFF int = iota
