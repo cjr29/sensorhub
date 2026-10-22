@@ -5,7 +5,7 @@ Description=Pinggy Tunnel Startup
 ExecStart=/usr/local/bin/pinggy_tunnel.sh
 Restart=on-failure
 RestartSec=10s
-User=chris
+User=root
 
 [Install]
 WantedBy=multi-user.target

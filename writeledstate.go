@@ -41,8 +41,6 @@ func writeLEDState(state int) error {
 		return fmt.Errorf("invalid LED state: %d", state)
 	}
 
-	// The newline is optional; remove it if the receiving device does not
-	// expect one.
 	return os.WriteFile(
 		ledStateFile,
 		[]byte(stateText+"\n"),

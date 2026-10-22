@@ -14,7 +14,7 @@ import (
 const (
 	HotspotConnName = "SensorHubHotspot" // The nmcli profile name for your Pi setup AP
 	HotspotSSID     = "SensorHub"
-	HotspotPWD      = "ConfigureMe123" // Minimum 8 characters
+	HotspotPWD      = "ConfigureMe123" // Generic password for the hotspot. Helps reduce chane of user error when configuring WiFi.
 	WiFiConnName    = "wifi-home"
 	// sudo nmcli device wifi hotspot ifname wlan0 con-name "SensorHubHotspot" ssid SensorHub password ConfigureMe123
 
@@ -40,8 +40,6 @@ type SSIDPageData struct {
 	Networks []Network
 	Error    string
 }
-
-// var pageTmpl = template.Must(template.ParseFiles("/usr/local/bin/sensorhub/templates/showwifi.html"))
 
 var currentWiFi = WiFi{}
 
@@ -73,7 +71,6 @@ func startHotspot() error {
 	} else {
 		logger.Debug("SensorHubHotspot profile does not exist. Create it.")
 		// Create the new hotspot network profile and start it
-		// sudo nmcli device wifi hotspot ifname wlan0 con-name SensorHubHotspot ssid SensorHub password ConfigureMe123
 		err := addHotspotConnection(HotspotConnName, HotspotSSID, HotspotPWD)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Error creating hotspot connection: %s", err))
@@ -381,7 +378,6 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 		return false, fmt.Errorf("connName is empty")
 	}
 	// Check connection exists:
-	// nmcli -t -f NAME con show
 	existsCmd := exec.CommandContext(ctx, "nmcli", "-t", "-f", "NAME", "con", "show")
 	var existsOut bytes.Buffer
 	existsCmd.Stdout = &existsOut
@@ -400,7 +396,6 @@ func connectionActive(ctx context.Context, connName string) (bool, error) {
 		return false, nil // not existing -> not active
 	}
 	// Check if that specific connection is active:
-	// nmcli -t -f NAME,TYPE,DEVICE con show --active
 	activeCmd := exec.CommandContext(ctx, "nmcli", "-t", "-f", "NAME", "con", "show", "--active")
 	var activeOut bytes.Buffer
 	activeCmd.Stdout = &activeOut

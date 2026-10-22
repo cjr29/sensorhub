@@ -167,34 +167,4 @@ func runProcess() {
 	}
 
 	logger.Info(fmt.Sprintf("Expired Sensors Processing: Deleted %d expired sensor records.", deleted))
-
-	// // Process unknown sensor records older than 1 week.
-	// searchEnd := time.Now().Add(-7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
-
-	// sensorsJSON, err := createJSONFromSQLite(dbPath, tableName, searchEnd)
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Database/JSON error: %v\n", err))
-	// 	return
-	// }
-
-	// var sensors []sensorRow
-	// if err := json.Unmarshal([]byte(sensorsJSON), &sensors); err != nil {
-	// 	logger.Error(fmt.Sprintf("JSON error: %v\n", err))
-	// 	return
-	// }
-
-	// for _, sensor := range sensors {
-	// 	targetSensor := sensor["ID"]
-	// 	targetModel := sensor["MODEL"]
-	// 	targetSensorID := sensor["SENSORID"]
-
-	// 	if err := deleteSensor(dbPath, tableName, targetSensor); err != nil {
-	// 		logger.Error(fmt.Sprintf("Database error deleting sensor ID %v: %v\n", targetSensor, err))
-	// 		continue
-	// 	}
-
-	// 	logger.Debug(fmt.Sprintf("Removed sensor ID %v - Model %v - id:%v\n", targetSensor, targetModel, targetSensorID))
-	// }
-
-	logger.Info("Expired Sensors Processing: End cleanup of sensor records.")
 }

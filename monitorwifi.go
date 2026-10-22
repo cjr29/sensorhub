@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -16,7 +17,7 @@ func monitorWiFi(ctx context.Context, wg *sync.WaitGroup, logger *slog.Logger, c
 			return // quit
 		default:
 			amt := 60 // seconds delay between checks
-			// logger.Debug(fmt.Sprintf("Check WiFi availability every %d seconds", amt))
+			logger.Debug(fmt.Sprintf("Check WiFi availability every %d seconds", amt))
 			// See if Internet (remote) access is available
 			if hasInternet() {
 				internet = true

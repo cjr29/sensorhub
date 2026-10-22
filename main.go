@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.17.3" // Don't save password in config file. Use NetworkManager to store password securely.
+const AppVersion = "0.18.0" // Turn off Debug logging for production. Change to Error for production. Clean-up code.
 
 const (
 	OFF int = iota
@@ -30,7 +30,7 @@ const (
 var hostName string
 var busConfigured bool = false
 
-// Channel for comman ing the light control goroutine to change the LED state
+// Channel for commanding the light control goroutine to change the LED state
 var lightCmd = make(chan int, 2)
 
 // Global Internet status flag
