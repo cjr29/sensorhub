@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const AppVersion = "0.18.2" // Update README
+const AppVersion = "1.0.0" // First public release of Sensor Hub software. 2026-10-27
 
 const (
 	OFF int = iota
