@@ -33,6 +33,8 @@ This project is intended to be easy to set up, easy to extend, and suitable for 
 - Power and Status LEDs optional
 - Reset pushbutton optional
 
+![Hardware Block Diagram](SensorHubBlockDiagram.jpg)
+
 ## Prerequisites
 
 Before getting started, make sure you have:
