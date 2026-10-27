@@ -1,0 +1,11 @@
+[Unit]
+Description=Pinggy Tunnel Startup
+
+[Service]
+ExecStart=/usr/local/bin/pinggy_tunnel.sh
+Restart=on-failure
+RestartSec=10s
+User=root
+
+[Install]
+WantedBy=multi-user.target

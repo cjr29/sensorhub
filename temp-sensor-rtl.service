@@ -1,0 +1,9 @@
+[Unit]
+Description=RTL_433 Software Defined Radio service
+After=network-online.target
+[Service]
+ExecStart=/usr/bin/rtl_433 -R 8 -R 11 -R 12 -R 20 -R 40 -R 54 -R 55 -R 73 -R 75 -R 76 -R 91 -R 112 -R 113 -R 163 -v -C customary -F mqtt://localhost:1883,events=sensorhub/weather/sensors
+Restart=always
+User=root
+[Install]
+WantedBy=multi-user.target

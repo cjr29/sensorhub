@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14251f">
+  <title>SensorHub Wi-Fi Setup</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f6f4;
+      color: #17241e;
+    }
+    body {
+      box-sizing: border-box;
+      display: grid;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px 16px;
+      place-items: center;
+    }
+    main {
+      box-sizing: border-box;
+      width: min(100%, 440px);
+      padding: 28px;
+      border: 1px solid #dbe5df;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 12px 36px rgb(23 36 30 / 8%);
+    }
+    h1 { margin: 0 0 8px; font-size: 1.6rem; }
+    p { line-height: 1.5; }
+    label { display: block; margin: 20px 0 7px; font-weight: 650; }
+    input, select, button {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid #aabbb0;
+      border-radius: 8px;
+      background: #fff;
+      color: inherit;
+      font: inherit;
+    }
+    button {
+      margin-top: 20px;
+      border: 0;
+      background: #176b4a;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      margin-top: 12px;
+      border: 1px solid #176b4a;
+      background: #fff;
+      color: #176b4a;
+    }
+    button:disabled { cursor: wait; opacity: .65; }
+    #status { min-height: 1.5em; margin-bottom: 0; }
+    #status.error { color: #a32020; }
+    #status.success { color: #176b4a; }
+    .hint { margin: 8px 0 0; color: #52645a; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Connect SensorHub to Wi-Fi</h1>
+    <p>Choose a nearby network or enter its name, then provide its password.</p>
+    <form id="wifi-form">
+      <label for="ssid">Network name (SSID)</label>
+      <input id="ssid" name="ssid" list="networks" autocomplete="off" required>
+      <datalist id="networks"></datalist>
+      <p class="hint">Hidden networks can be entered manually.</p>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password">
+      <p class="hint">Leave blank for an open network.</p>
+
+      <button id="connect" type="submit">Connect</button>
+    </form>
+    <button id="scan" class="secondary" type="button">Refresh networks</button>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    const form = document.querySelector("#wifi-form");
+    const ssidInput = document.querySelector("#ssid");
+    const passwordInput = document.querySelector("#password");
+    const networks = document.querySelector("#networks");
+    const status = document.querySelector("#status");
+    const connectButton = document.querySelector("#connect");
+    const scanButton = document.querySelector("#scan");
+
+    function showStatus(message, kind = "") {
+      status.textContent = message;
+      status.className = kind;
+    }
+
+    async function refreshNetworks() {
+      scanButton.disabled = true;
+      showStatus("Scanning for Wi-Fi networks…");
+      try {
+        const response = await fetch("/ssids", { cache: "no-store" });
+        if (response.status === 204) {
+          networks.replaceChildren();
+          showStatus("No networks found. Enter a network name manually.");
+          return;
+        }
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "Could not scan for networks.");
+        }
+        networks.replaceChildren(...result.map((ssid) => {
+          const option = document.createElement("option");
+          option.value = ssid;
+          return option;
+        }));
+        showStatus(result.length ? "Select a network or type its name." : "No networks found.");
+      } catch (error) {
+        showStatus(error.message || "Could not scan for networks.", "error");
+      } finally {
+        scanButton.disabled = false;
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const ssid = ssidInput.value.trim();
+      if (!ssid) {
+        showStatus("Enter a network name.", "error");
+        return;
+      }
+      connectButton.disabled = true;
+      showStatus("Connecting… The setup hotspot may disconnect.");
+      try {
+        const response = await fetch("/connect-ssid", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ SSID: ssid, password: passwordInput.value })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "Could not connect to that network.");
+        }
+        passwordInput.value = "";
+        showStatus("Wi-Fi configured. Reconnect your device to the new network.", "success");
+      } catch (error) {
+        showStatus(error.message || "Could not connect to that network.", "error");
+      } finally {
+        connectButton.disabled = false;
+      }
+    });
+
+    scanButton.addEventListener("click", refreshNetworks);
+    refreshNetworks();
+  </script>
+</body>
+</html>
