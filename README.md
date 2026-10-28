@@ -142,7 +142,7 @@ Code for open source weather sensor hub on RaspberryPi ZeroW.
 
    ## iPhone Wi-Fi setup
 
-   A sibling open source project on github https://github.com/cjr29/Sensor-Hub-Xcode.git provides an Apple iOS application that enables
+   A sibling open source project on github https://github.com/cjr29/sensorhubXCode.git provides an Apple iOS application that enables
    a rich environment for displaying the sensor data. It also supports management of multiple sensor hubs. Remote hubs are easily added.
 
  # Future Enhancements
@@ -151,7 +151,7 @@ Code for open source weather sensor hub on RaspberryPi ZeroW.
  - Include local weather service forecast data by GPS
  - iOS Watch app
 
- See the Issues in github for both `cjr29/sensorhub.git` and `cjr29/Sensor-Hub-Xcode.git` for the latest plans.
+ See the Issues in github for both `cjr29/sensorhub.git` and `cjr29/sensorhubXCode.git` for the latest plans.
  
  # Contributing
 
