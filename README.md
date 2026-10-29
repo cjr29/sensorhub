@@ -73,6 +73,9 @@ Code for open source weather sensor hub on RaspberryPi ZeroW.
 
    Clients request lists of Sensor Hubs and Sensors using a simple REST API. Clients can also manage the Sensor records by renaming them, adding location details, and including descriptions.
 
+   See the [REST API reference](./docs/REST_API.md) for the complete endpoint
+   list, request and response formats, status codes, and client examples.
+
    The REST API can be invoked from the command line using `curl`, from a Browser using a url, and from an Apple iOS client (which internally uses the REST API). API endpoints are available for lists of Sensors. Endpoints are available for POSTing updates to Sensor records. The sqlite3 database stores Sensor records using the unique hostname assigned to each Sensor Hub, e.g. `sensorhub88a29e330a21`. Multiple Sensor Hubs can be present on a LAN. Each Hub has its own copy of the Sensor records identified by its hostname.
 
    ## Reverse proxy service for enabling remote access from anywhere
@@ -116,9 +119,9 @@ Code for open source weather sensor hub on RaspberryPi ZeroW.
    Removing the three variables restores the existing HTTP behavior for clients
    that have not yet been updated.
 
-   We DO NOT USE bearer-token authentication in this implementation because
-   the sensorhub is local to the client. If we use a reverse tunnel like pinggy.io,
-   then the reverse tunnel provides the API security.
+   Bearer-token authentication is optional and disabled unless all three
+   settings above are configured. Do not assume a reverse tunnel replaces
+   securing direct access to the hub.
 
    The systemd service script for sensorhub-hotspot redirects stdout to /var/log/sensorhub.log
 
